@@ -1,0 +1,15 @@
+{
+  "search": "検索",
+  "loading": "検索中...",
+  "save": "保存",
+  "cancel": "キャンセル",
+  "close": "閉じる",
+  "add": "追加",
+  "export": "エクスポート",
+  "exporting": "エクスポート中...",
+  "exportExcel": "Excel をエクスポート",
+  "exportPdf": "PDF をエクスポート",
+  "language": "言語",
+  "localeZhCN": "中文",
+  "localeJaJP": "日本語"
+}

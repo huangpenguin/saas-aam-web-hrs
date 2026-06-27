@@ -1,0 +1,9 @@
+# Cursor indexing exclusions — keeps IDE stable on large Node projects
+node_modules/
+.pnpm-store/
+dist/
+.git/
+.vite/
+coverage/
+*.log
+pnpm-lock.yaml

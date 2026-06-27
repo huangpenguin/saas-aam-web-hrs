@@ -1,0 +1,63 @@
+{
+  "fields": {
+    "employeeNo": "社員番号",
+    "name": "氏名",
+    "period": "対象年月",
+    "employmentType": "雇用区分",
+    "taxCategory": "源泉税区分",
+    "attendanceDays": "出勤日数",
+    "totalWorkingHours": "総労働時間",
+    "weeklyWorkingHours": "週平均労働時間",
+    "hourlyWage": "時給",
+    "baseSalary": "基本給",
+    "bonus": "賞与",
+    "tax": "税額",
+    "otherAllowance": "その他手当",
+    "nonTaxableCommutingAllowance": "非課税通勤手当",
+    "grossPay": "支給合計",
+    "employmentInsurancePremium": "雇用保険料",
+    "withholdingIncomeTax": "源泉所得税",
+    "residentTax": "住民税",
+    "totalDeductions": "控除合計",
+    "netPay": "差引支給額（手取り）",
+    "age": "年齢",
+    "standardMonthlyRemuneration": "標準報酬月額",
+    "scheduledWorkingDays": "所定労働日数",
+    "paidLeaveDaysUsed": "有給取得日数",
+    "overtimeHours": "時間外労働時間",
+    "positionAllowance": "役職手当",
+    "housingAllowance": "住宅手当",
+    "commutingAllowance": "通勤手当",
+    "overtimePay": "時間外手当",
+    "healthInsurancePremium": "健康保険料",
+    "nursingCareInsurancePremium": "介護保険料",
+    "welfarePensionPremium": "厚生年金保険料",
+    "childCareSupportPremium": "子ども・子育て支援金",
+    "unionFee": "組合費",
+    "dormitoryFee": "社宅費",
+    "id": "ID",
+    "teacherId": "講師 ID"
+  },
+  "groups": {
+    "basicInfo": "基本情報",
+    "attendance": "勤怠",
+    "payments": "支給",
+    "deductions": "控除",
+    "summary": "集計",
+    "socialInsurance": "控除（社会保険）",
+    "taxes": "控除（税金）",
+    "agreedDeductions": "控除（協定）",
+    "paymentDeduction": "支給・控除",
+    "basic": "基礎"
+  },
+  "enums": {
+    "employmentType": {
+      "partTime": "非常勤",
+      "fullTime": "常勤"
+    },
+    "taxCategory": {
+      "kou": "甲欄",
+      "otsu": "乙欄"
+    }
+  }
+}

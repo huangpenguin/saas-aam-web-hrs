@@ -1,0 +1,63 @@
+{
+  "fields": {
+    "employeeNo": "员工编号",
+    "name": "姓名",
+    "period": "对象年月",
+    "employmentType": "雇佣类型",
+    "taxCategory": "源泉税类别",
+    "attendanceDays": "出勤天数",
+    "totalWorkingHours": "总工时",
+    "weeklyWorkingHours": "周平均工时",
+    "hourlyWage": "时薪",
+    "baseSalary": "基本工资",
+    "bonus": "奖金",
+    "tax": "税额",
+    "otherAllowance": "其他津贴",
+    "nonTaxableCommutingAllowance": "免税通勤补贴",
+    "grossPay": "应发合计",
+    "employmentInsurancePremium": "雇用保险费",
+    "withholdingIncomeTax": "预扣所得税",
+    "residentTax": "居民税",
+    "totalDeductions": "扣款合计",
+    "netPay": "实发工资",
+    "age": "年龄",
+    "standardMonthlyRemuneration": "标准月薪",
+    "scheduledWorkingDays": "规定工作天数",
+    "paidLeaveDaysUsed": "带薪休假天数",
+    "overtimeHours": "加班时长",
+    "positionAllowance": "职务津贴",
+    "housingAllowance": "住房津贴",
+    "commutingAllowance": "通勤津贴",
+    "overtimePay": "加班津贴",
+    "healthInsurancePremium": "健康保险费",
+    "nursingCareInsurancePremium": "护理保险费",
+    "welfarePensionPremium": "厚生年金保险费",
+    "childCareSupportPremium": "育儿支援金",
+    "unionFee": "工会费",
+    "dormitoryFee": "宿舍费",
+    "id": "ID",
+    "teacherId": "教员 ID"
+  },
+  "groups": {
+    "basicInfo": "基本信息",
+    "attendance": "考勤",
+    "payments": "应发项",
+    "deductions": "扣款项",
+    "summary": "汇总",
+    "socialInsurance": "社会保险扣款",
+    "taxes": "税金扣款",
+    "agreedDeductions": "协议扣款",
+    "paymentDeduction": "应发与扣款",
+    "basic": "基础信息"
+  },
+  "enums": {
+    "employmentType": {
+      "partTime": "兼职",
+      "fullTime": "全职"
+    },
+    "taxCategory": {
+      "kou": "甲栏",
+      "otsu": "乙栏"
+    }
+  }
+}

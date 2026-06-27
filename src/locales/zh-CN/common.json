@@ -1,0 +1,15 @@
+{
+  "search": "查询",
+  "loading": "查询中...",
+  "save": "保存",
+  "cancel": "取消",
+  "close": "关闭",
+  "add": "添加",
+  "export": "导出",
+  "exporting": "导出中...",
+  "exportExcel": "导出 Excel",
+  "exportPdf": "导出 PDF",
+  "language": "语言",
+  "localeZhCN": "中文",
+  "localeJaJP": "日本語"
+}
