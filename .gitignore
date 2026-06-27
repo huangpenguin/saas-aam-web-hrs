@@ -33,49 +33,7 @@ coverage/
 *.swp
 *.swo
 
-# Python (legacy template entries)
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-.python-version
-.venv/
-venv/
-env/
-uv.lock
-.ruff_cache/
-.mypy_cache/
-.pytest_cache/
-.pyright/
-.coverage
-htmlcov/
-build/
-*.egg-info/
-
-# Experiment / data artifacts
-wandb/
-mlruns/
-runs/
-logs/
-lightning_logs/
-tensorboard/
-data/
-datasets/
-outputs/
-artifacts/
-checkpoints/
-models/
-*.ckpt
-*.pt
-*.pth
-*.safetensors
-*.onnx
-
-# Cursor local state (keep rules/context out of repo unless you opt in)
+# Cursor local state
 .cursor/
 .cursorrules
 MEMORY.md
-.devcontainer/devcontainer.local.json
-
-# Notebooks
-.ipynb_checkpoints/
