@@ -1,6 +1,5 @@
 import { httpClient } from './httpClient'
 import { queryMockMonthlySalaryDetails } from '@/mocks/payrollMock'
-import { translatePayrollMessage } from '@/utils/columnLabels'
 import type {
   ApiResponse,
   MonthlySalaryDetailsData,
@@ -20,10 +19,6 @@ export async function fetchMonthlySalaryDetails(
 ): Promise<MonthlySalaryDetailsData[]> {
   if (switchMock) {
     const records = queryMockMonthlySalaryDetails(payload)
-    if (records.length === 0) {
-      throw new Error(translatePayrollMessage('mockNotFound'))
-    }
-
     return delayMockResponse(records)
   }
 

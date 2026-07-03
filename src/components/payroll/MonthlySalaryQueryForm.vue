@@ -92,17 +92,11 @@ function handleSubmit(): void {
 
 <template>
   <section class="query-panel">
-    <div class="query-panel__header">
-      <div>
-        <h2>{{ t('payroll:queryConditions') }}</h2>
-        <p>{{ t('payroll:queryDescription') }}</p>
-      </div>
+    <form class="query-form" @submit.prevent="handleSubmit">
       <span class="query-panel__badge" :class="{ 'query-panel__badge--mock': props.mockMode }">
         {{ props.mockMode ? t('payroll:mockMode') : t('payroll:apiMode') }}
       </span>
-    </div>
 
-    <form class="query-form" @submit.prevent="handleSubmit">
       <label>
         <span>{{ t('payroll:year') }}</span>
         <select v-model="year">
@@ -172,26 +166,7 @@ function handleSubmit(): void {
 <style scoped>
 .query-panel {
   display: grid;
-  gap: 14px;
-}
-
-.query-panel__header {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: flex-start;
-}
-
-.query-panel__header h2 {
-  margin: 0;
-  font-size: 18px;
-  color: var(--text-h);
-}
-
-.query-panel__header p {
-  margin: 4px 0 0;
-  color: var(--text);
-  font-size: 13px;
+  gap: 8px;
 }
 
 .query-panel__badge {
@@ -213,12 +188,12 @@ function handleSubmit(): void {
 
 .query-form {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
-  gap: 14px;
+  grid-template-columns: auto repeat(5, minmax(116px, 1fr)) auto;
+  gap: 10px;
   align-items: end;
-  padding: 14px;
-  border: 1px dashed var(--border);
-  border-radius: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
   background: var(--bg);
 }
 
@@ -227,7 +202,7 @@ label {
   flex-direction: column;
   gap: 6px;
   color: var(--text);
-  font-size: 14px;
+  font-size: 12px;
   text-align: left;
 }
 
@@ -253,9 +228,9 @@ label small {
 
 select,
 input {
-  min-height: 42px;
+  min-height: 34px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--surface);
   color: var(--text-h);
   padding: 0 12px;
@@ -273,9 +248,9 @@ input[readonly] {
 }
 
 .query-submit {
-  min-height: 42px;
+  min-height: 34px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--accent);
   color: #fff;
   padding: 0 22px;
@@ -300,13 +275,9 @@ input[readonly] {
   font-size: 13px;
 }
 
-@media (max-width: 860px) {
+  @media (max-width: 860px) {
   .query-form {
     grid-template-columns: 1fr;
-  }
-
-  .query-panel__header {
-    flex-direction: column;
   }
 
   .query-submit {

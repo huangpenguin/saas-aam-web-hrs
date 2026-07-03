@@ -2,6 +2,10 @@ import { formatCurrency } from '@/constants/payrollColumns'
 import type { MonthlySalaryDetailsData } from '@/types/payroll'
 import type { SalaryDetailColumn } from '@/types/table'
 import { translateColumnField } from '@/utils/columnLabels'
+import {
+  appendCustomColumnField as appendPipelineCustomColumnField,
+  unflattenPayrollRowsFromApi,
+} from '@/utils/payrollDataPipeline'
 
 const preferredColumnOrder = ['employeeNo', 'name', 'period', 'employmentType']
 
@@ -85,13 +89,7 @@ export function buildQueryPreviewColumnsFromRows(
 export function normalizeQueryPreviewRows(
   rows: MonthlySalaryDetailsData[],
 ): Record<string, string | number | null>[] {
-  return rows.map((row) => {
-    const { customFields, ...rest } = row
-    return {
-      ...rest,
-      ...(customFields ?? {}),
-    }
-  })
+  return unflattenPayrollRowsFromApi(rows)
 }
 
 export function appendCustomColumnField(
@@ -99,8 +97,5 @@ export function appendCustomColumnField(
   field: string,
   initialValue: string | number | null = '',
 ): Record<string, string | number | null>[] {
-  return rows.map((row) => ({
-    ...row,
-    [field]: row[field] ?? initialValue,
-  }))
+  return appendPipelineCustomColumnField(rows, field, initialValue)
 }

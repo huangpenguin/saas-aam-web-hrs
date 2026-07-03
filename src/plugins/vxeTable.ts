@@ -1,15 +1,7 @@
 import type { App } from 'vue'
+import VXETable from 'vxe-table'
+import 'vxe-table/lib/style.css'
 
-let installPromise: Promise<void> | null = null
-
-export function ensureVxeTableInstalled(app: App): Promise<void> {
-  if (!installPromise) {
-    installPromise = (async () => {
-      const VXETable = await import('vxe-table')
-      await import('vxe-table/lib/style.css')
-      app.use(VXETable.default)
-    })()
-  }
-
-  return installPromise
+export function installVxeTable(app: App): void {
+  app.use(VXETable)
 }

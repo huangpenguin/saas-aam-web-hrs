@@ -43,12 +43,12 @@ export function resolvePreviewColumnTitle(column: {
   title: string
   formula?: string
 }): string {
-  if (column.formula || column.field.startsWith('custom_formula_')) {
+  if (column.formula) {
     return column.title
   }
 
-  if (column.field.startsWith('custom_remark_')) {
-    return translatePayrollMessage('remarkColumn')
+  if (column.field.startsWith('custom_')) {
+    return column.title || translatePayrollMessage('remarkColumn')
   }
 
   const translated = translateColumnField(column.field)

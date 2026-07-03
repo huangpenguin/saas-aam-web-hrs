@@ -9,12 +9,17 @@ import {
   buildQueryPreviewColumnsFromRows,
   normalizeQueryPreviewRows,
 } from '@/utils/queryResultTable'
+import { resolvePayrollTableViews } from '@/utils/resolvePayrollColumns'
 import {
   resolvePreviewColumnTitle,
   translatePayrollMessage,
 } from '@/utils/columnLabels'
 import { normalizeMonthlySalaryQuery } from '@/utils/payrollQuery'
-import type { MonthlySalaryDetailsRequest, PayrollMode } from '@/types/payroll'
+import type {
+  FormulaContext,
+  MonthlySalaryDetailsRequest,
+  PayrollMode,
+} from '@/types/payroll'
 import type { SalaryDetailColumn } from '@/types/table'
 
 export const usePayrollStore = defineStore('payroll', () => {
@@ -27,6 +32,9 @@ export const usePayrollStore = defineStore('payroll', () => {
   const previewRows = ref<Record<string, string | number | null>[]>([])
   const previewColumns = ref<SalaryDetailColumn[]>([])
   const customColumns = ref<SalaryDetailColumn[]>([])
+  const formulaContext = ref<FormulaContext>({
+    taxRate: 0.03,
+  })
   const localeVersion = ref(0)
 
   i18next.on('languageChanged', () => {
@@ -43,7 +51,7 @@ export const usePayrollStore = defineStore('payroll', () => {
     localeVersion.value
 
     const localizedCustomColumns = customColumns.value.map((column) => {
-      if (column.field.startsWith('custom_remark_') && !column.formula) {
+      if (column.field.startsWith('custom_') && !column.formula) {
         return {
           ...column,
           title: translatePayrollMessage('remarkColumn'),
@@ -54,6 +62,27 @@ export const usePayrollStore = defineStore('payroll', () => {
     })
 
     return [...previewColumns.value, ...localizedCustomColumns]
+  })
+
+  const displayTables = computed(() => {
+    localeVersion.value
+    const seenCustomFields = new Set<string>()
+    const schemaCustomColumns = displayColumns.value
+      .filter((column) => column.field.startsWith('custom_'))
+      .map((column) => ({
+        ...column,
+        editable: column.formula ? false : true,
+      }))
+      .filter((column) => {
+        if (seenCustomFields.has(column.field)) {
+          return false
+        }
+
+        seenCustomFields.add(column.field)
+        return true
+      })
+
+    return resolvePayrollTableViews(previewRows.value, schemaCustomColumns)
   })
 
   const availableFormulaFields = computed(() => {
@@ -114,7 +143,7 @@ export const usePayrollStore = defineStore('payroll', () => {
 
   function addRemarkColumn(): void {
     const suffix = Date.now().toString(36)
-    const field = `custom_remark_${suffix}`
+    const field = `custom_${suffix}`
 
     customColumns.value.push({
       field,
@@ -126,7 +155,7 @@ export const usePayrollStore = defineStore('payroll', () => {
 
   function addFormulaColumn(title: string, formula: string): void {
     const suffix = Date.now().toString(36)
-    const field = `custom_formula_${suffix}`
+    const field = `custom_${suffix}`
 
     customColumns.value.push({
       field,
@@ -164,6 +193,27 @@ export const usePayrollStore = defineStore('payroll', () => {
     row[field] = value
   }
 
+  function updatePreviewRowCell(
+    row: Record<string, string | number | null>,
+    field: string,
+    value: string | number | null,
+  ): void {
+    if (typeof value === 'string' && value.trim() !== '') {
+      const parsed = Number(value)
+      row[field] = Number.isFinite(parsed) ? parsed : value
+      return
+    }
+
+    row[field] = value
+  }
+
+  function updateFormulaContext(key: keyof FormulaContext, value: number): void {
+    formulaContext.value = {
+      ...formulaContext.value,
+      [key]: value,
+    }
+  }
+
   function clearQueryResult(): void {
     hasQueryResult.value = false
     resultCount.value = 0
@@ -184,7 +234,9 @@ export const usePayrollStore = defineStore('payroll', () => {
     previewRows,
     previewColumns,
     customColumns,
+    formulaContext,
     displayColumns,
+    displayTables,
     availableFormulaFields,
     isMockMode,
     mockHint,
@@ -194,6 +246,8 @@ export const usePayrollStore = defineStore('payroll', () => {
     addFormulaColumn,
     updateFormulaColumn,
     updatePreviewCell,
+    updatePreviewRowCell,
+    updateFormulaContext,
     clearQueryResult,
   }
 })

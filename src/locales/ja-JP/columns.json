@@ -36,7 +36,9 @@
     "unionFee": "組合費",
     "dormitoryFee": "社宅費",
     "id": "ID",
-    "teacherId": "講師 ID"
+    "teacherId": "講師 ID",
+    "custom_101": "高温手当",
+    "custom_102": "備考"
   },
   "groups": {
     "basicInfo": "基本情報",
@@ -48,7 +50,8 @@
     "taxes": "控除（税金）",
     "agreedDeductions": "控除（協定）",
     "paymentDeduction": "支給・控除",
-    "basic": "基礎"
+    "basic": "基礎",
+    "customFields": "カスタム項目"
   },
   "enums": {
     "employmentType": {

@@ -1,194 +1,341 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useTranslation } from 'i18next-vue'
-import { useLocale } from '@/composables/useLocale'
-import type { PayrollMode } from '@/types/payroll'
-import type { SalaryDetailColumn } from '@/types/table'
+import { computed, ref } from 'vue'
 import {
-  formatPreviewCell,
-  isLayoutEditableColumn,
-} from '@/utils/previewCellValue'
-import { resolvePreviewColumnTitle } from '@/utils/columnLabels'
+  resolvePayrollColumnTitle,
+  resolvePayrollGroupTitle,
+} from '@/constants/payrollPayslipSchemas'
+import type { FormulaContext, PayrollMode } from '@/types/payroll'
+import type { PayrollColumnConfig } from '@/types/table'
+import { formatPreviewCell } from '@/utils/previewCellValue'
 
 const props = defineProps<{
   rows: Record<string, string | number | null>[]
-  columns: SalaryDetailColumn[]
-  tableHeight: number
+  columns: PayrollColumnConfig[]
+  tableHeight: number | string
   mode: PayrollMode
   editable: boolean
+  formulaContext: FormulaContext
+  emptyText: string
 }>()
 
 const emit = defineEmits<{
-  cellChange: [rowIndex: number, field: string, value: string | number | null]
-  editFormulaColumn: [column: SalaryDetailColumn]
+  cellChange: [
+    row: Record<string, string | number | null>,
+    field: string,
+    value: string | number | null,
+  ]
+  formulaContextChange: [key: keyof FormulaContext, value: number]
 }>()
 
-const { t } = useTranslation()
-const { localeVersion } = useLocale()
+interface EditingCell {
+  rowKey: string
+  field: string
+}
 
-const isLayoutMode = computed(() => props.mode === 'layout' && props.editable)
+const editingCell = ref<EditingCell | null>(null)
+const editingValue = ref('')
 
-const localizedColumns = computed(() => {
-  localeVersion.value
-
-  return props.columns.map((column) => ({
-    ...column,
-    title: resolvePreviewColumnTitle(column),
-  }))
-})
-
-const tableKey = computed(
-  () =>
-    `${props.mode}-${localeVersion.value}-${localizedColumns.value.map((column) => `${column.field}:${column.title}`).join(',')}`,
+const topHeaders = computed(() =>
+  props.columns.map((column) => ({
+    id: column.id,
+    title: resolvePayrollGroupTitle(column),
+    colspan: countLeafColumns(column),
+    rowspan: column.children?.length ? 1 : 2,
+  })),
 )
 
-function columnEditable(column: SalaryDetailColumn): boolean {
-  return isLayoutMode.value && isLayoutEditableColumn(column)
+const leafColumns = computed(() => flattenLeafColumns(props.columns))
+const isLayoutEditable = computed(() => props.mode === 'layout' && props.editable)
+
+function countLeafColumns(column: PayrollColumnConfig): number {
+  if (!column.children?.length) {
+    return 1
+  }
+
+  return column.children.reduce((count, child) => count + countLeafColumns(child), 0)
 }
 
-function handleEditClosed(params: {
-  row: Record<string, string | number | null>
-  rowIndex: number
-  column: { field?: string }
-}): void {
-  const field = params.column.field
-  if (!field) {
+function flattenLeafColumns(columns: PayrollColumnConfig[]): PayrollColumnConfig[] {
+  const result: PayrollColumnConfig[] = []
+
+  columns.forEach((column) => {
+    if (column.children?.length) {
+      result.push(...flattenLeafColumns(column.children))
+      return
+    }
+
+    result.push(column)
+  })
+
+  return result
+}
+
+function resolveRowKey(row: Record<string, string | number | null>, rowIndex: number): string {
+  const id = row.id
+  return id === null || id === undefined ? `row-${rowIndex}` : String(id)
+}
+
+function canEditColumn(column: PayrollColumnConfig): boolean {
+  return Boolean(isLayoutEditable.value && column.field && column.editable && !column.formula)
+}
+
+function startEdit(
+  row: Record<string, string | number | null>,
+  rowIndex: number,
+  column: PayrollColumnConfig,
+): void {
+  if (!column.field || !canEditColumn(column)) {
     return
   }
 
-  emit('cellChange', params.rowIndex, field, params.row[field] ?? null)
+  const field = String(column.field)
+  editingCell.value = {
+    rowKey: resolveRowKey(row, rowIndex),
+    field,
+  }
+  editingValue.value = row[field] === null || row[field] === undefined ? '' : String(row[field])
 }
 
-function handleHeaderClick(column: SalaryDetailColumn): void {
-  if (!isLayoutMode.value || !column.formula) {
+function isEditingCell(
+  row: Record<string, string | number | null>,
+  rowIndex: number,
+  column: PayrollColumnConfig,
+): boolean {
+  if (!editingCell.value || !column.field) {
+    return false
+  }
+
+  return (
+    editingCell.value.rowKey === resolveRowKey(row, rowIndex) &&
+    editingCell.value.field === String(column.field)
+  )
+}
+
+function commitEdit(
+  row: Record<string, string | number | null>,
+  column: PayrollColumnConfig,
+): void {
+  if (!column.field) {
+    editingCell.value = null
+    editingValue.value = ''
     return
   }
 
-  emit('editFormulaColumn', column)
+  const nextValue = editingValue.value.trim() === '' ? '' : editingValue.value
+  emit('cellChange', row, String(column.field), nextValue)
+  editingCell.value = null
+  editingValue.value = ''
+}
+
+function cancelEdit(): void {
+  editingCell.value = null
+  editingValue.value = ''
+}
+
+function handleHeaderParamInput(key: keyof FormulaContext, event: Event): void {
+  const nextValue = Number((event.target as HTMLInputElement).value)
+  if (!Number.isFinite(nextValue)) {
+    return
+  }
+
+  emit('formulaContextChange', key, nextValue)
+}
+
+function resolveWidthStyle(column: PayrollColumnConfig): string | undefined {
+  return column.width ? `${column.width}px` : undefined
+}
+
+function formatCell(row: Record<string, string | number | null>, column: PayrollColumnConfig): string {
+  return formatPreviewCell(column, row, props.formulaContext)
+}
+
+function resolveColumnTitle(column: PayrollColumnConfig): string {
+  return resolvePayrollColumnTitle(column)
 }
 </script>
 
 <template>
-  <div class="query-preview-table">
-    <vxe-table
-      :key="tableKey"
-      border
-      show-overflow
-      show-header-overflow
-      :height="props.tableHeight"
-      :data="props.rows"
-      :scroll-x="{ enabled: true, gt: 6 }"
-      :edit-config="
-        isLayoutMode
-          ? { trigger: 'click', mode: 'cell', showStatus: true, autoClear: false }
-          : undefined
-      "
-      @edit-closed="handleEditClosed"
-    >
-      <vxe-column
-        v-for="column in localizedColumns"
-        :key="column.field"
-        :field="column.field"
-        :title="column.title"
-        :min-width="120"
-        :class-name="columnEditable(column) ? 'cell--editable' : undefined"
-        :edit-render="columnEditable(column) ? { autofocus: '.cell-editor' } : undefined"
-      >
-        <template #header>
-          <button
-            type="button"
-            class="column-header"
-            :class="{ 'column-header--formula': column.formula && isLayoutMode }"
-            :disabled="!column.formula || !isLayoutMode"
-            @click="handleHeaderClick(column)"
-          >
-            <span>{{ column.title }}</span>
-            <small v-if="column.formula && isLayoutMode">{{ t('payroll:clickEditFormula') }}</small>
-          </button>
-        </template>
+  <div class="query-preview-table" :style="{ height: typeof props.tableHeight === 'number' ? `${props.tableHeight}px` : props.tableHeight }">
+    <div v-if="props.rows.length === 0" class="query-preview-table__empty">
+      {{ props.emptyText }}
+    </div>
 
-        <template #default="{ row }">
-          <span
-            :class="{
-              'formula-cell': column.formula,
-              'editable-cell': columnEditable(column),
-            }"
-          >
-            {{ formatPreviewCell(column, row) }}
-          </span>
-        </template>
-
-        <template v-if="columnEditable(column)" #edit="{ row }">
-          <input
-            v-model="row[column.field]"
-            type="text"
-            class="cell-editor"
-            @click.stop
+    <div v-else class="query-preview-table__scroll">
+      <table class="query-preview-table__table">
+        <colgroup>
+          <col
+            v-for="column in leafColumns"
+            :key="column.id"
+            :style="{ width: resolveWidthStyle(column), minWidth: resolveWidthStyle(column) ?? '120px' }"
           />
-        </template>
-      </vxe-column>
-    </vxe-table>
+        </colgroup>
+
+        <thead>
+          <tr>
+            <th
+              v-for="header in topHeaders"
+              :key="header.id"
+              :colspan="header.colspan"
+              :rowspan="header.rowspan"
+              class="group-header"
+            >
+              {{ header.title }}
+            </th>
+          </tr>
+          <tr>
+            <th
+              v-for="column in leafColumns.filter((item) => item.field)"
+              :key="column.id"
+              class="leaf-header"
+            >
+              <div class="column-header" :class="{ 'column-header--formula': column.formula }">
+                <span>{{ resolveColumnTitle(column) }}</span>
+                <label v-if="column.headerParam" class="header-param">
+                  <span>Tax</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="1"
+                    step="0.001"
+                    :value="props.formulaContext[column.headerParam]"
+                    @input="handleHeaderParamInput(column.headerParam, $event)"
+                  />
+                </label>
+              </div>
+            </th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr v-for="(row, rowIndex) in props.rows" :key="resolveRowKey(row, rowIndex)">
+            <td
+              v-for="column in leafColumns"
+              :key="column.id"
+              :class="{
+                'cell--editable': canEditColumn(column),
+                'cell--formula': column.formula,
+              }"
+              @dblclick="startEdit(row, rowIndex, column)"
+            >
+              <input
+                v-if="isEditingCell(row, rowIndex, column)"
+                v-model="editingValue"
+                class="cell-editor"
+                type="text"
+                @blur="commitEdit(row, column)"
+                @keydown.enter.prevent="commitEdit(row, column)"
+                @keydown.esc.prevent="cancelEdit"
+              />
+              <span v-else>{{ formatCell(row, column) }}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .query-preview-table {
-  height: 100%;
   min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  overflow: hidden;
 }
 
-:deep(.cell--editable) {
-  cursor: cell;
-  background: #fffbeb;
+.query-preview-table__scroll {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+.query-preview-table__empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  min-height: 160px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.query-preview-table__table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+th,
+td {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--text-h);
+  background: var(--surface);
+  text-align: left;
+  white-space: nowrap;
+}
+
+thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.group-header {
+  background: #f8fafc;
+  font-weight: 700;
+}
+
+.leaf-header {
+  background: #fcfcfd;
+  vertical-align: top;
 }
 
 .column-header {
-  display: inline-flex;
+  display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  font: inherit;
-  color: inherit;
-  cursor: default;
+  gap: 4px;
+  min-width: 0;
 }
 
 .column-header--formula {
-  cursor: pointer;
-  color: var(--accent);
+  color: #0f766e;
 }
 
-.column-header--formula:hover {
-  text-decoration: underline;
-}
-
-.column-header small {
+.header-param {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 10px;
   font-weight: 400;
-  opacity: 0.8;
 }
 
-.editable-cell {
-  display: block;
-  min-height: 20px;
-}
-
-.formula-cell {
-  color: #0f766e;
-  font-weight: 600;
+.header-param input,
+.cell-editor {
+  width: 72px;
+  min-height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0 6px;
+  font: inherit;
+  color: var(--text-h);
+  background: #fff;
 }
 
 .cell-editor {
   width: 100%;
-  min-height: 28px;
-  border: 1px solid var(--accent);
-  border-radius: 6px;
-  padding: 0 8px;
-  font: inherit;
-  color: var(--text-h);
-  background: #fff;
-  box-sizing: border-box;
+  min-width: 96px;
+}
+
+.cell--editable {
+  cursor: cell;
+  background: #fffbeb;
+}
+
+.cell--formula {
+  color: #0f766e;
+  font-weight: 600;
 }
 </style>

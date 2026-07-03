@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, getCurrentInstance, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useTranslation } from 'i18next-vue'
 import FormulaColumnDialog from '@/components/payroll/FormulaColumnDialog.vue'
@@ -8,8 +8,6 @@ import MonthlySalaryQueryForm from '@/components/payroll/MonthlySalaryQueryForm.
 import PayrollToolbar from '@/components/payroll/PayrollToolbar.vue'
 import QueryPreviewTable from '@/components/payroll/QueryPreviewTable.vue'
 import { useRbac } from '@/composables/useRbac'
-import { useVerticalResize } from '@/composables/useVerticalResize'
-import { ensureVxeTableInstalled } from '@/plugins/vxeTable'
 import { useAuthStore } from '@/stores/authStore'
 import { usePayrollStore } from '@/stores/payrollStore'
 import type { MonthlySalaryDetailsRequest, PayrollMode } from '@/types/payroll'
@@ -21,7 +19,6 @@ import {
   type PayrollExportFormat,
 } from '@/utils/payrollExport'
 
-const app = getCurrentInstance()?.appContext.app
 const { t } = useTranslation()
 
 const authStore = useAuthStore()
@@ -31,7 +28,9 @@ const { currentUser, isTeacher } = storeToRefs(authStore)
 const {
   availableFormulaFields,
   displayColumns,
+  displayTables,
   errorMessage,
+  formulaContext,
   hasQueryResult,
   isMockMode,
   lastQuery,
@@ -42,44 +41,11 @@ const {
   resultCount,
 } = storeToRefs(payrollStore)
 
-const showPreview = ref(false)
-const previewReady = ref(false)
-const previewLoading = ref(false)
-const previewLoadError = ref('')
-const pageRef = ref<HTMLElement | null>(null)
 const formulaDialogOpen = ref(false)
 const editingFormulaColumn = ref<SalaryDetailColumn | null>(null)
 const exporting = ref(false)
 const exportError = ref('')
-
-const PREVIEW_MIN_HEIGHT = 220
-const TOP_MIN_HEIGHT = 160
-const PAGE_CHROME_HEIGHT = 52
-const PREVIEW_CHROME_HEIGHT = 72
-
-function getInitialPreviewHeight(): number {
-  if (typeof window === 'undefined') {
-    return 360
-  }
-
-  return Math.round(window.innerHeight * 0.42)
-}
-
-function getPreviewMaxHeight(): number {
-  const pageHeight = pageRef.value?.clientHeight ?? window.innerHeight
-  return Math.max(PREVIEW_MIN_HEIGHT, pageHeight - TOP_MIN_HEIGHT - PAGE_CHROME_HEIGHT)
-}
-
-const { panelHeight: previewHeight, isResizing, startResize, syncBounds } = useVerticalResize({
-  initialHeight: getInitialPreviewHeight(),
-  minHeight: PREVIEW_MIN_HEIGHT,
-  maxHeight: getPreviewMaxHeight,
-  containerRef: pageRef,
-})
-
-const previewTableHeight = computed(() =>
-  Math.max(160, previewHeight.value - PREVIEW_CHROME_HEIGHT),
-)
+const tableRenderReady = ref(false)
 
 const querySummary = computed(() => {
   if (!lastQuery.value) {
@@ -89,41 +55,17 @@ const querySummary = computed(() => {
   return buildQuerySummary(lastQuery.value)
 })
 
-async function ensurePreviewTableReady(): Promise<boolean> {
-  if (previewReady.value) {
-    return true
-  }
-
-  if (!app) {
-    previewLoadError.value = t('payroll:previewInitError')
-    return false
-  }
-
-  previewLoading.value = true
-  previewLoadError.value = ''
-
-  try {
-    await ensureVxeTableInstalled(app)
-    previewReady.value = true
-    return true
-  } catch (error: unknown) {
-    previewLoadError.value =
-      error instanceof Error ? error.message : t('payroll:previewLoadError')
-    return false
-  } finally {
-    previewLoading.value = false
-  }
-}
-
 async function handleSearch(payload: MonthlySalaryDetailsRequest): Promise<void> {
+  tableRenderReady.value = false
   const success = await payrollStore.queryMonthlyDetails(payload)
   if (!success) {
-    showPreview.value = false
     return
   }
 
-  showPreview.value = true
-  await ensurePreviewTableReady()
+  await nextTick()
+  window.setTimeout(() => {
+    tableRenderReady.value = true
+  }, 0)
 }
 
 function handleModeChange(nextMode: PayrollMode): void {
@@ -159,15 +101,11 @@ function handleFormulaSubmit(payload: { title: string; formula: string }): void 
 }
 
 function handleCellChange(
-  rowIndex: number,
+  row: Record<string, string | number | null>,
   field: string,
   value: string | number | null,
 ): void {
-  payrollStore.updatePreviewCell(rowIndex, field, value)
-}
-
-function handleEditFormulaColumn(column: SalaryDetailColumn): void {
-  openFormulaDialog(column)
+  payrollStore.updatePreviewRowCell(row, field, value)
 }
 
 async function handleExport(format: PayrollExportFormat): Promise<void> {
@@ -193,74 +131,35 @@ async function handleExport(format: PayrollExportFormat): Promise<void> {
   }
 }
 
-function syncPreviewBounds(): void {
-  syncBounds()
+function handleFormulaContextChange(key: 'taxRate', value: number): void {
+  payrollStore.updateFormulaContext(key, value)
 }
 
-onMounted(() => {
-  syncPreviewBounds()
-  window.addEventListener('resize', syncPreviewBounds)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', syncPreviewBounds)
-})
+function resolveTableHeight(tableCount: number): number {
+  return tableCount > 1 ? 320 : 520
+}
 </script>
 
 <template>
-  <main
-    ref="pageRef"
-    class="payroll-page"
-    :class="{ 'payroll-page--with-preview': showPreview && hasQueryResult }"
-  >
-    <section class="payroll-top">
-      <header class="page-header">
-        <div class="page-header__main">
-          <p class="eyebrow">{{ t('payroll:appEyebrow') }}</p>
-          <h1>{{ t('payroll:dashboardTitle') }}</h1>
-        </div>
-        <div class="page-header__aside">
-          <LocaleSwitcher />
-          <div class="status-card">
-            <span>{{ t('payroll:currentRole') }}</span>
-            <strong>{{ currentUser.role }}</strong>
-            <small>{{ isMockMode ? t('payroll:mockData') : t('payroll:realApi') }}</small>
-          </div>
-        </div>
-      </header>
-
-      <section class="panel panel--compact">
-        <MonthlySalaryQueryForm
-          :loading="loading"
-          :mock-mode="isMockMode"
-          :mock-hint="mockHint"
-          :default-uid="isTeacher ? currentUser.employeeNo : ''"
-          :uid-readonly="isTeacher"
-          @search="handleSearch"
-        />
-
-        <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
-        <p v-else-if="!showPreview" class="query-hint">
-          {{ t('payroll:queryHint') }}
-        </p>
-      </section>
-    </section>
-
-    <template v-if="showPreview && hasQueryResult">
-      <div
-        class="preview-resizer"
-        :class="{ 'preview-resizer--active': isResizing }"
-        role="separator"
-        aria-orientation="horizontal"
-        :aria-label="t('payroll:resizePreviewAria')"
-        @mousedown="startResize"
-      >
-        <span class="preview-resizer__grip" />
-        <span class="preview-resizer__hint">{{ t('payroll:resizePreviewHint') }}</span>
+  <main class="payroll-page">
+    <header class="page-header">
+      <div class="page-header__main">
+        <p class="eyebrow">{{ t('payroll:appEyebrow') }}</p>
+        <h1>{{ t('payroll:dashboardTitle') }}</h1>
       </div>
+      <div class="page-header__aside">
+        <LocaleSwitcher />
+        <div class="status-card">
+          <span>{{ t('payroll:currentRole') }}</span>
+          <strong>{{ currentUser.role }}</strong>
+          <small>{{ isMockMode ? t('payroll:mockData') : t('payroll:realApi') }}</small>
+        </div>
+      </div>
+    </header>
 
-      <section class="panel panel--preview" :style="{ height: `${previewHeight}px` }">
-        <div class="panel-heading">
+    <section class="panel panel--preview">
+      <div class="panel-heading">
+        <div class="panel-title-row">
           <div>
             <h2>{{ t('payroll:previewTitle') }}</h2>
             <p v-if="querySummary" class="query-summary">
@@ -268,6 +167,7 @@ onUnmounted(() => {
               <span class="result-count">{{ t('payroll:resultCount', { count: resultCount }) }}</span>
               <span v-if="mode === 'layout'" class="layout-badge">{{ t('payroll:layoutEditMode') }}</span>
             </p>
+            <p v-else class="query-summary">{{ t('payroll:queryHint') }}</p>
           </div>
 
           <PayrollToolbar
@@ -283,28 +183,51 @@ onUnmounted(() => {
           />
         </div>
 
-        <p v-if="exportError" class="error-message">{{ exportError }}</p>
+        <MonthlySalaryQueryForm
+          :loading="loading"
+          :mock-mode="isMockMode"
+          :mock-hint="mockHint"
+          :default-uid="isTeacher ? currentUser.employeeNo : ''"
+          :uid-readonly="isTeacher"
+          @search="handleSearch"
+        />
+      </div>
 
-        <p v-if="mode === 'layout'" class="layout-hint">
-          {{ t('payroll:layoutHint') }}
-        </p>
+      <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
+      <p v-if="exportError" class="error-message">{{ exportError }}</p>
 
-        <div class="preview-table-shell">
-          <p v-if="previewLoadError" class="error-message">{{ previewLoadError }}</p>
-          <p v-else-if="previewLoading" class="preview-loading">{{ t('payroll:previewLoading') }}</p>
-          <QueryPreviewTable
-            v-else-if="previewReady"
-            :rows="previewRows"
-            :columns="displayColumns"
-            :table-height="previewTableHeight"
-            :mode="mode"
-            :editable="canEditPayrollLayout"
-            @cell-change="handleCellChange"
-            @edit-formula-column="handleEditFormulaColumn"
-          />
+      <p v-if="mode === 'layout'" class="layout-hint">
+        {{ t('payroll:layoutHint') }}
+      </p>
+
+      <div class="preview-table-shell">
+        <p v-if="!hasQueryResult" class="preview-empty">{{ t('payroll:emptyTableHint') }}</p>
+        <p v-else-if="!tableRenderReady" class="preview-loading">{{ t('payroll:previewLoading') }}</p>
+        <div v-else class="table-sections">
+          <section
+            v-for="table in displayTables"
+            :key="table.id"
+            class="table-section"
+          >
+            <header v-if="displayTables.length > 1" class="table-section__header">
+              <strong>{{ table.title }}</strong>
+              <span>{{ t('payroll:resultCount', { count: table.rows.length }) }}</span>
+            </header>
+            <QueryPreviewTable
+              :rows="table.rows"
+              :columns="table.columns"
+              :table-height="resolveTableHeight(displayTables.length)"
+              :mode="mode"
+              :editable="canEditPayrollLayout"
+              :formula-context="formulaContext"
+              :empty-text="hasQueryResult ? t('payroll:noQueryResults') : t('payroll:emptyTableHint')"
+              @cell-change="handleCellChange"
+              @formula-context-change="handleFormulaContextChange"
+            />
+          </section>
         </div>
-      </section>
-    </template>
+      </div>
+    </section>
 
     <FormulaColumnDialog
       :open="formulaDialogOpen"
@@ -325,25 +248,11 @@ onUnmounted(() => {
   margin: 0 auto;
   padding: 16px 20px 20px;
   display: grid;
-  grid-template-rows: 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
   box-sizing: border-box;
   text-align: left;
   overflow: hidden;
-}
-
-.payroll-page--with-preview {
-  grid-template-rows: minmax(0, 1fr) 14px auto;
-  row-gap: 8px;
-}
-
-.payroll-top {
-  min-height: 0;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  display: grid;
-  gap: 12px;
-  align-content: start;
-  padding-right: 2px;
 }
 
 .page-header {
@@ -374,12 +283,6 @@ onUnmounted(() => {
   background: var(--surface);
   border-radius: 16px;
   box-shadow: var(--shadow);
-}
-
-.panel--compact {
-  padding: 16px 18px;
-  display: grid;
-  gap: 14px;
 }
 
 .panel--preview {
@@ -434,16 +337,6 @@ h2 {
   font-size: 14px;
 }
 
-.query-hint {
-  margin: 0;
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-size: 13px;
-}
-
 .query-summary {
   margin: 6px 0 0;
   font-size: 12px;
@@ -460,6 +353,11 @@ h2 {
 }
 
 .panel-heading {
+  display: grid;
+  gap: 12px;
+}
+
+.panel-title-row {
   display: flex;
   justify-content: space-between;
   gap: 16px;
@@ -495,36 +393,6 @@ h2 {
   font-size: 12px;
 }
 
-.preview-resizer {
-  height: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  cursor: row-resize;
-  touch-action: none;
-  user-select: none;
-}
-
-.preview-resizer__grip {
-  width: 56px;
-  height: 4px;
-  border-radius: 999px;
-  background: var(--border);
-  transition: background 0.2s ease;
-}
-
-.preview-resizer__hint {
-  font-size: 11px;
-  color: var(--text);
-  opacity: 0.75;
-}
-
-.preview-resizer:hover .preview-resizer__grip,
-.preview-resizer--active .preview-resizer__grip {
-  background: var(--accent);
-}
-
 .preview-table-shell {
   flex: 1 1 auto;
   min-height: 0;
@@ -532,6 +400,39 @@ h2 {
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--bg);
+}
+
+.table-sections {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  box-sizing: border-box;
+  overflow: auto;
+}
+
+.table-section {
+  min-height: 240px;
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.table-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-h);
+  font-size: 13px;
+}
+
+.table-section__header span {
+  color: var(--text);
+  font-size: 12px;
 }
 
 .preview-loading {
@@ -542,6 +443,13 @@ h2 {
   margin: 0;
   color: var(--text);
   font-size: 14px;
+}
+
+.preview-empty {
+  margin: 0;
+  padding: 14px 12px;
+  color: var(--text);
+  font-size: 13px;
 }
 
 .error-message {
@@ -572,8 +480,8 @@ h2 {
     text-align: left;
   }
 
-  .preview-resizer__hint {
-    display: none;
+  .panel-title-row {
+    flex-direction: column;
   }
 }
 </style>

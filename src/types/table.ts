@@ -1,5 +1,10 @@
 import type { PermissionKey } from './auth'
-import type { FullTimePayrollRow, PayrollBaseRow, PartTimePayrollRow } from './payroll'
+import type {
+  EmploymentType,
+  FullTimePayrollRow,
+  PayrollBaseRow,
+  PartTimePayrollRow,
+} from './payroll'
 
 export type PayrollField =
   | keyof PayrollBaseRow
@@ -20,6 +25,9 @@ export interface PayrollColumnConfig {
   children?: PayrollColumnConfig[]
   requiredPermission?: PermissionKey
   formula?: string
+  formatter?: (value: string | number | null) => string
+  headerParam?: 'taxRate'
+  custom?: boolean
 }
 
 export interface SalaryDetailColumn {
@@ -28,4 +36,13 @@ export interface SalaryDetailColumn {
   formatter?: (value: string | number | null) => string
   editable?: boolean
   formula?: string
+}
+
+export interface PayrollTableView {
+  id: EmploymentType | 'mixed' | 'empty'
+  title: string
+  employmentType: EmploymentType | 'mixed' | null
+  rows: Record<string, string | number | null>[]
+  columns: PayrollColumnConfig[]
+  flatColumns: SalaryDetailColumn[]
 }

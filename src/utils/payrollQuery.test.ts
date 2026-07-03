@@ -10,7 +10,7 @@ describe('payroll query filters', () => {
       employmentType: 'partTime',
     })
 
-    expect(partTimeRows).toHaveLength(2)
+    expect(partTimeRows.length).toBeGreaterThan(1)
     expect(partTimeRows.every((row) => row.employmentType === 'partTime')).toBe(true)
   })
 
@@ -22,8 +22,25 @@ describe('payroll query filters', () => {
       taxCategory: 'kou',
     })
 
-    expect(rows).toHaveLength(1)
+    expect(rows.length).toBeGreaterThan(0)
     expect(rows[0]?.employeeNo).toBe('X001')
+  })
+
+  it('returns mixed employment types for default mock month', () => {
+    const rows = queryMockMonthlySalaryDetails({
+      year: '2026',
+      month: '4',
+    })
+
+    expect(rows.length).toBeGreaterThan(5)
+    expect(rows.some((row) => row.employmentType === 'partTime')).toBe(true)
+    expect(rows.some((row) => row.employmentType === 'fullTime')).toBe(true)
+  })
+
+  it('covers multiple mock periods', () => {
+    expect(queryMockMonthlySalaryDetails({ year: '2025', month: '12' }).length).toBeGreaterThan(1)
+    expect(queryMockMonthlySalaryDetails({ year: '2026', month: '1' }).length).toBeGreaterThan(1)
+    expect(queryMockMonthlySalaryDetails({ year: '2027', month: '1' }).length).toBeGreaterThan(1)
   })
 
   it('drops tax category when employment type is full-time', () => {

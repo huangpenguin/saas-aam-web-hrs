@@ -36,7 +36,9 @@
     "unionFee": "工会费",
     "dormitoryFee": "宿舍费",
     "id": "ID",
-    "teacherId": "教员 ID"
+    "teacherId": "教员 ID",
+    "custom_101": "高温补贴",
+    "custom_102": "备注"
   },
   "groups": {
     "basicInfo": "基本信息",
@@ -48,7 +50,8 @@
     "taxes": "税金扣款",
     "agreedDeductions": "协议扣款",
     "paymentDeduction": "应发与扣款",
-    "basic": "基础信息"
+    "basic": "基础信息",
+    "customFields": "自定义项"
   },
   "enums": {
     "employmentType": {

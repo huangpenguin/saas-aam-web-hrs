@@ -10,6 +10,7 @@ export interface PayrollBaseRow {
   name: string
   employmentType: EmploymentType
   customFields?: Record<string, string | number | null>
+  dynamicData?: Record<string, string | number | null>
 }
 
 export interface PartTimePayrollRow extends PayrollBaseRow {
@@ -68,6 +69,10 @@ export interface MonthlySalaryDetailsRequest {
 }
 
 export type MonthlySalaryDetailsData = PayrollRow
+
+export interface FormulaContext {
+  taxRate: number
+}
 
 export interface ApiResponse<T> {
   success: boolean
