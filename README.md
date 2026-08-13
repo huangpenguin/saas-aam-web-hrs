@@ -24,4 +24,13 @@ pnpm dev
 
 ## 环境变量
 
+GitHub Pages 默认以 Mock 模式运行。需要连接后端测试环境时，在仓库
+`Settings → Secrets and variables → Actions → Variables` 中设置：
+
+- `VITE_SWITCH_MOCK=false`
+- `VITE_HRS_API_BASE_URL=https://<test-api-host>/api/hrs/v1`
+
+测试 API 必须允许 GitHub Pages 域名跨域访问，并使用 HTTPS。配置后重新运行
+`Deploy GitHub Pages` 工作流即可。
+
 `.env` 中配置 `SYS_CODE`，用于部署子路径（默认 `hrs`）。
