@@ -1,11 +1,5 @@
-<template>
-  <RouterView class="app-view" />
-</template>
+<script setup lang="ts">
+import AppShell from '@/components/layout/AppShell.vue'
+</script>
 
-<style>
-.app-view {
-  display: block;
-  height: 100%;
-  overflow: hidden;
-}
-</style>
+<template><AppShell /></template>

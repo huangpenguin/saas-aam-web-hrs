@@ -1,0 +1,10 @@
+<script setup lang="ts">
+import { useTranslation } from 'i18next-vue'
+import PageHeader from '@/components/ui/PageHeader.vue'
+import StatusBadge from '@/components/ui/StatusBadge.vue'
+const { t } = useTranslation('hrs')
+const people = [['山田 太郎','教務部','20','0','1','4:30','CALCULATED'],['佐藤 花子','総務部','19','1','0','2:10','CALCULATED'],['鈴木 一郎','日本語学科','12','0','0','0:45','PENDING']]
+</script>
+<template><div class="page-stack"><PageHeader :title="t('attendance.adminTitle')" :subtitle="t('attendance.adminSubtitle')"><button class="button button--primary">{{ t('actions.calculate') }}</button></PageHeader>
+<section class="card process-card"><div class="card-heading"><div><p>{{ t('attendance.settlement') }}</p><h2>締め日 8月10日</h2></div><StatusBadge tone="warning">確認中</StatusBadge></div><div class="process-metrics"><div><strong>23</strong><span>{{ t('attendance.settled') }}</span></div><div class="metric-alert"><strong>2</strong><span>{{ t('attendance.issues') }}</span></div><div><strong>4</strong><span>{{ t('attendance.requests') }}</span></div><button class="button button--secondary">承認一覧を見る</button></div></section>
+<section class="card table-card"><div class="filter-toolbar"><input placeholder="氏名で検索" /><select><option>すべての部門</option></select><select><option>すべての状態</option></select></div><div class="data-table-scroll"><table class="data-table"><thead><tr><th>{{ t('personnel.name') }}</th><th>{{ t('personnel.department') }}</th><th>{{ t('dashboard.workDays') }}</th><th>遅刻</th><th>早退</th><th>{{ t('dashboard.overtime') }}</th><th>Status</th><th></th></tr></thead><tbody><tr v-for="person in people" :key="person[0]"><td><strong>{{ person[0] }}</strong></td><td>{{ person[1] }}</td><td>{{ person[2] }}</td><td>{{ person[3] }}</td><td>{{ person[4] }}</td><td>{{ person[5] }}</td><td><StatusBadge :tone="person[6] === 'PENDING' ? 'warning' : 'info'">{{ person[6] === 'PENDING' ? '要確認' : '集計済' }}</StatusBadge></td><td><button class="text-button">{{ t('actions.details') }} ›</button></td></tr></tbody></table></div></section></div></template>

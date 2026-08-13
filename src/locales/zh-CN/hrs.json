@@ -1,0 +1,14 @@
+{
+  "app": { "name": "人事劳务", "subtitle": "学校人事系统", "system": "系统", "previewRole": "预览权限" },
+  "navigation": { "work": "我的工作", "management": "管理", "home": "首页", "attendance": "考勤", "leave": "请假申请", "salaryDetail": "薪资明细", "personnel": "职员", "attendanceAdmin": "考勤管理", "salaryAdmin": "薪资管理", "nencho": "年末调整", "access": "权限管理" },
+  "actions": { "menu": "菜单", "notifications": "通知", "details": "查看详情", "search": "查询", "reset": "重置", "add": "新增", "save": "保存", "approve": "通过", "reject": "退回", "download": "下载", "calculate": "执行计算", "confirm": "确认", "finalize": "薪资封账" },
+  "status": { "active": "在职", "suspended": "停职", "resigned": "离职", "pending": "待处理", "calculated": "待确认", "finalized": "已封账", "working": "工作中", "onBreak": "休息中", "completed": "已下班", "notStarted": "未上班" },
+  "dashboard": { "title": "早上好", "subtitle": "在这里查看今天的工作和需要处理的事项。", "attendanceTitle": "今日考勤", "currentTime": "当前时间", "clockIn": "上班", "breakStart": "开始休息", "breakEnd": "结束休息", "clockOut": "下班", "monthlyTitle": "本月考勤", "workDays": "出勤天数", "overtime": "加班", "paidLeave": "已休年假", "salaryTitle": "7月薪资", "salaryNote": "薪资明细已经发布", "todoTitle": "我的待办", "noticeTitle": "通知", "noTodo": "当前没有待处理事项" },
+  "personnel": { "title": "职员", "subtitle": "统一管理在职状态、雇佣和薪资资料。", "keyword": "按姓名或职员编号搜索", "department": "部门", "all": "全部", "name": "姓名", "employeeNo": "职员编号", "position": "职位", "employment": "雇佣类型", "bank": "工资账户", "updated": "更新时间", "empty": "没有符合条件的职员" },
+  "attendance": { "title": "考勤", "subtitle": "查看打卡记录和本月工作情况。", "timeline": "今日打卡", "recent": "近期考勤", "date": "日期", "start": "上班", "end": "下班", "work": "工作时长", "state": "状态", "adminTitle": "考勤管理", "adminSubtitle": "处理月度统计、修改申请和请假审批。", "settlement": "2026年7月考勤结算", "settled": "已统计 23人", "issues": "需确认 2人", "requests": "待审批 4件" },
+  "leave": { "title": "请假申请", "subtitle": "提交请假并查看审批状态。", "type": "请假类型", "period": "起止时间", "reason": "申请理由", "submit": "提交申请", "history": "申请记录" },
+  "salary": { "selfTitle": "薪资明细", "selfSubtitle": "查看每月支给、扣除和实发金额。", "adminTitle": "薪资管理", "adminSubtitle": "完成考勤结算后的计算、确认、调整和封账。", "gross": "支给合计", "deductions": "扣除合计", "net": "实发金额", "credits": "支给项目", "debits": "扣除项目", "employee": "职员", "type": "薪资类型", "confirmation": "本人确认", "progress": "2026年7月薪资处理", "attendanceDone": "考勤已结算", "calculationDone": "薪资已计算", "employeeConfirmation": "职员确认", "finalization": "管理员封账", "legacy": "查看详细薪资数据" },
+  "nencho": { "title": "年末调整", "subtitle": "管理申告准备、审核、计算和法定文书。", "period": "2026年年末调整", "target": "对象职员", "submitted": "已提交", "returned": "退回", "steps": "处理进度", "configuration": "期间配置", "declarations": "申告审核", "calculation": "计算与精算", "documents": "源泉徴収票与法定调书" },
+  "access": { "title": "权限管理", "subtitle": "管理角色模板与个人追加/回收权限。", "role": "角色模板", "members": "账户数量", "permissions": "权限数", "overrides": "个人覆盖", "dataScope": "数据范围", "all": "全部", "departmentTree": "所属部门及下级", "self": "仅本人" },
+  "commonUi": { "mock": "示例数据", "phase": "实施阶段", "comingSoon": "将在详细需求确定后提供。", "records": "条", "people": "人" }
+}

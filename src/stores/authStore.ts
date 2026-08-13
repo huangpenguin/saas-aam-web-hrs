@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { hasPermission } from '@/constants/permissions'
+import { hasPermission, rolePermissions } from '@/constants/permissions'
 import type { AuthUser, PermissionKey, UserRole } from '@/types/auth'
 
 const defaultUser: AuthUser = {
@@ -18,6 +18,7 @@ export const useAuthStore = defineStore('auth', () => {
   const isTeacher = computed(() => role.value === 'teacher')
   const canReadAllPayroll = computed(() => hasPermission(role.value, 'payroll:read:all'))
   const canEditPayrollLayout = computed(() => hasPermission(role.value, 'payroll:edit:layout'))
+  const effectivePermissions = computed(() => rolePermissions[role.value])
 
   function can(permission: PermissionKey): boolean {
     return hasPermission(role.value, permission)
@@ -37,6 +38,7 @@ export const useAuthStore = defineStore('auth', () => {
     canReadAllPayroll,
     canEditPayrollLayout,
     can,
+    effectivePermissions,
     setRole,
   }
 })

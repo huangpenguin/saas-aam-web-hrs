@@ -1,0 +1,2425 @@
+openapi: 3.1.0
+info:
+  title: HRS Human Resource System API
+  version: 1.0.0-draft
+  summary: HRS 考勤、薪酬、年末调整、人事与权限 API
+  description: |
+    本契约是 HRS 前端、后端、Mock 与测试的唯一字段来源。
+    正式金额使用十进制字符串；所有时间戳必须包含时区；业务时区为 Asia/Tokyo。
+servers:
+  - url: /api/hrs/v1
+    description: Same-origin gateway
+security:
+  - bearerAuth: []
+tags:
+  - name: Context
+  - name: Jobs
+  - name: Files
+  - name: Personnel
+  - name: Access
+  - name: Attendance
+  - name: Leave
+  - name: Salary
+  - name: Nencho
+
+paths:
+  /context:
+    get:
+      tags: [Context]
+      operationId: getSessionContext
+      summary: 获取当前 HRS 会话上下文
+      x-phase: 0
+      responses:
+        '200':
+          description: 当前账户、关联职员和最终权限
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionContextResponse'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+  /dictionaries:
+    get:
+      tags: [Context]
+      operationId: listDictionaries
+      summary: 获取 HRS 枚举字典
+      x-phase: 0
+      responses:
+        '200':
+          $ref: '#/components/responses/GenericOk'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+  /references/departments:
+    get:
+      tags: [Context]
+      operationId: listDepartmentReferences
+      summary: 获取部门引用数据
+      x-phase: 0
+      responses:
+        '200':
+          description: 部门树
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepartmentListResponse'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+  /references/positions:
+    get:
+      tags: [Context]
+      operationId: listPositionReferences
+      summary: 获取职位引用数据
+      x-phase: 0
+      responses:
+        '200':
+          $ref: '#/components/responses/GenericOk'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+  /capabilities:
+    get:
+      tags: [Context]
+      operationId: listFeatureCapabilities
+      summary: 获取模块启用状态
+      x-phase: 0
+      responses:
+        '200':
+          description: 功能能力列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CapabilityListResponse'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+  /jobs/{jobId}:
+    get:
+      tags: [Jobs]
+      operationId: getJob
+      summary: 查询异步任务
+      x-phase: 0
+      parameters:
+        - $ref: '#/components/parameters/JobId'
+      responses:
+        '200':
+          description: 异步任务状态
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+  /files/{fileId}/download-ticket:
+    post:
+      tags: [Files]
+      operationId: createDownloadTicket
+      summary: 创建受保护文件短期下载票据
+      x-phase: 0
+      parameters:
+        - $ref: '#/components/parameters/FileId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: 单用途下载票据
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DownloadTicketResponse'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+
+  /employees:
+    get:
+      tags: [Personnel]
+      operationId: listEmployees
+      summary: 查询职员
+      x-phase: 1
+      x-permission: HRS:PERSONNEL:DATA
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/Sort'
+        - name: keyword
+          in: query
+          schema: { type: string, maxLength: 100 }
+        - name: departmentId
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema:
+            type: array
+            items: { $ref: '#/components/schemas/EmployeeStatus' }
+          style: form
+          explode: false
+        - name: employmentType
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: 职员分页结果；银行账号始终脱敏
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmployeePageResponse'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+    post:
+      tags: [Personnel]
+      operationId: createEmployee
+      summary: 新增职员并触发账户创建
+      x-phase: 1
+      x-permission: HRS:PERSONNEL:DATA
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateEmployeeRequest' }
+      responses:
+        '201':
+          description: 已创建职员
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmployeeResponse' }
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+  /employees/{employeeId}:
+    parameters:
+      - $ref: '#/components/parameters/EmployeeId'
+    get:
+      tags: [Personnel]
+      operationId: getEmployee
+      summary: 查询职员详情
+      x-phase: 1
+      x-permission: HRS:PERSONNEL:DATA
+      responses:
+        '200':
+          description: 职员详情
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmployeeResponse' }
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+    patch:
+      tags: [Personnel]
+      operationId: updateEmployee
+      summary: 更新职员基本与雇佣资料
+      x-phase: 1
+      x-permission: HRS:PERSONNEL:DATA
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateEmployeeRequest' }
+      responses:
+        '200':
+          description: 已更新
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmployeeResponse' }
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+  /employees/{employeeId}/status-transitions:
+    post:
+      tags: [Personnel]
+      operationId: transitionEmployeeStatus
+      summary: 变更职员在职状态
+      x-phase: 1
+      x-permission: HRS:PERSONNEL:DATA
+      parameters:
+        - $ref: '#/components/parameters/EmployeeId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmployeeStatusTransitionRequest' }
+      responses:
+        '201':
+          description: 状态变更记录
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmployeeStatusTransitionResponse' }
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+  /employees/{employeeId}/salary-profile:
+    parameters:
+      - $ref: '#/components/parameters/EmployeeId'
+    get:
+      tags: [Personnel]
+      operationId: getEmployeeSalaryProfile
+      summary: 查询职员薪资基础资料
+      x-phase: 1
+      x-permission: HRS:PERSONNEL:DATA
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+    put:
+      tags: [Personnel]
+      operationId: replaceEmployeeSalaryProfile
+      summary: 更新职员薪资基础资料
+      x-phase: 1
+      x-permission: HRS:PERSONNEL:DATA
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmployeeSalaryProfile' }
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /employees/{employeeId}/bank-account:
+    parameters:
+      - $ref: '#/components/parameters/EmployeeId'
+    get:
+      tags: [Personnel]
+      operationId: getEmployeeBankAccount
+      summary: 查询脱敏银行账户
+      x-phase: 1
+      x-permission: HRS:PERSONNEL:BANK
+      responses:
+        '200':
+          description: 脱敏银行账户
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BankAccountResponse' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+    put:
+      tags: [Personnel]
+      operationId: replaceEmployeeBankAccount
+      summary: 更新银行账户
+      x-phase: 1
+      x-permission: HRS:PERSONNEL:BANK
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateBankAccountRequest' }
+      responses:
+        '200':
+          description: 已更新的脱敏银行账户
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BankAccountResponse' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /employees/{employeeId}/audit-entries:
+    get:
+      tags: [Personnel]
+      operationId: listEmployeeAuditEntries
+      summary: 查询职员资料变更历史
+      x-phase: 1
+      x-permission: HRS:PERSONNEL:DATA
+      parameters:
+        - $ref: '#/components/parameters/EmployeeId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200': { $ref: '#/components/responses/GenericPageOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+
+  /access/accounts:
+    get:
+      tags: [Access]
+      operationId: listAccessAccounts
+      summary: 查询账户及权限摘要
+      x-phase: 1
+      x-permission: HRS:ACCESS:ADMIN
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: keyword
+          in: query
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/GenericPageOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /access/permissions:
+    get:
+      tags: [Access]
+      operationId: listPermissionCatalog
+      summary: 获取权限目录
+      x-phase: 1
+      x-permission: HRS:ACCESS:ADMIN
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /access/roles:
+    get:
+      tags: [Access]
+      operationId: listRoleTemplates
+      summary: 查询角色模板
+      x-phase: 1
+      x-permission: HRS:ACCESS:ADMIN
+      responses:
+        '200':
+          description: 角色模板列表
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RoleListResponse' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+    post:
+      tags: [Access]
+      operationId: createRoleTemplate
+      summary: 新增角色模板
+      x-phase: 1
+      x-permission: HRS:ACCESS:ADMIN
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateRoleRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/GenericCreated' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /access/roles/{roleId}:
+    parameters:
+      - $ref: '#/components/parameters/RoleId'
+    get:
+      tags: [Access]
+      operationId: getRoleTemplate
+      summary: 查询角色模板详情
+      x-phase: 1
+      x-permission: HRS:ACCESS:ADMIN
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+    patch:
+      tags: [Access]
+      operationId: updateRoleTemplate
+      summary: 更新角色模板
+      x-phase: 1
+      x-permission: HRS:ACCESS:ADMIN
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateRoleRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /access/accounts/{accountId}:
+    parameters:
+      - $ref: '#/components/parameters/AccountId'
+    get:
+      tags: [Access]
+      operationId: getAccountAccess
+      summary: 查询账户角色和个人权限覆盖
+      x-phase: 1
+      x-permission: HRS:ACCESS:ADMIN
+      responses:
+        '200':
+          description: 账户权限
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountAccessResponse' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+    put:
+      tags: [Access]
+      operationId: replaceAccountAccess
+      summary: 更新角色和个人权限覆盖
+      x-phase: 1
+      x-permission: HRS:ACCESS:ADMIN
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateAccountAccessRequest' }
+      responses:
+        '200':
+          description: 更新后的权限
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountAccessResponse' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /access/accounts/{accountId}/effective-permissions:
+    get:
+      tags: [Access]
+      operationId: getEffectivePermissions
+      summary: 预览账户最终权限
+      x-phase: 1
+      x-permission: HRS:ACCESS:ADMIN
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /access/audit-entries:
+    get:
+      tags: [Access]
+      operationId: listAccessAuditEntries
+      summary: 查询权限审计记录
+      x-phase: 1
+      x-permission: HRS:ACCESS:ADMIN
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200': { $ref: '#/components/responses/GenericPageOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+
+  /attendance/today:
+    get:
+      tags: [Attendance]
+      operationId: getTodayAttendance
+      summary: 获取本人今日考勤状态
+      x-phase: 2
+      x-permission: HRS:ATTENDANCE:PUNCH
+      responses:
+        '200':
+          description: 今日事件和汇总
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TodayAttendanceResponse' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /attendance/events:
+    post:
+      tags: [Attendance]
+      operationId: createAttendanceEvent
+      summary: 提交逐次打卡事件
+      x-phase: 2
+      x-permission: HRS:ATTENDANCE:PUNCH
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateAttendanceEventRequest' }
+      responses:
+        '201':
+          description: 已记录事件及更新后的今日状态
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TodayAttendanceResponse' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /attendance/records:
+    get:
+      tags: [Attendance]
+      operationId: listSelfAttendanceRecords
+      summary: 查询本人每日考勤记录
+      x-phase: 2
+      x-permission: HRS:ATTENDANCE:SELF_VIEW
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/AttendanceRecordStatus' }
+      responses:
+        '200': { $ref: '#/components/responses/GenericPageOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /attendance/records/{recordId}:
+    get:
+      tags: [Attendance]
+      operationId: getSelfAttendanceRecord
+      summary: 查询本人记录详情和时间线
+      x-phase: 2
+      x-permission: HRS:ATTENDANCE:SELF_VIEW
+      parameters:
+        - $ref: '#/components/parameters/RecordId'
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /attendance/modification-requests:
+    get:
+      tags: [Attendance]
+      operationId: listModificationRequests
+      summary: 查询考勤修正申请
+      x-phase: 2
+      x-permission: HRS:ATTENDANCE:SELF_MODIFY
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: scope
+          in: query
+          schema: { type: string, enum: [SELF, ADMIN], default: SELF }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/ApprovalStatus' }
+      responses:
+        '200': { $ref: '#/components/responses/GenericPageOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+    post:
+      tags: [Attendance]
+      operationId: createModificationRequest
+      summary: 提交考勤修正申请
+      x-phase: 2
+      x-permission: HRS:ATTENDANCE:SELF_MODIFY
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateModificationRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/GenericCreated' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /attendance/modification-requests/{requestId}:
+    get:
+      tags: [Attendance]
+      operationId: getModificationRequest
+      summary: 查询修正申请与快照
+      x-phase: 2
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /attendance/modification-requests/{requestId}/decisions:
+    post:
+      tags: [Attendance]
+      operationId: decideModificationRequest
+      summary: 审批考勤修正申请
+      x-phase: 2
+      x-permission: HRS:ATTENDANCE:MODIFY_APPROVE
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApprovalDecisionRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/GenericCreated' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /leave-applications:
+    get:
+      tags: [Leave]
+      operationId: listLeaveApplications
+      summary: 查询请假申请
+      x-phase: 2
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: scope
+          in: query
+          schema: { type: string, enum: [SELF, ADMIN], default: SELF }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/LeaveStatus' }
+      responses:
+        '200': { $ref: '#/components/responses/GenericPageOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+    post:
+      tags: [Leave]
+      operationId: createLeaveApplication
+      summary: 提交请假申请
+      x-phase: 2
+      x-permission: HRS:LEAVE:APPLY
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateLeaveApplicationRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/GenericCreated' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /leave-applications/{applicationId}/cancel:
+    post:
+      tags: [Leave]
+      operationId: cancelLeaveApplication
+      summary: 撤销本人待审批请假
+      x-phase: 2
+      x-permission: HRS:LEAVE:APPLY
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VersionedActionRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /leave-applications/{applicationId}/decisions:
+    post:
+      tags: [Leave]
+      operationId: decideLeaveApplication
+      summary: 审批请假
+      x-phase: 2
+      x-permission: HRS:LEAVE:APPROVE
+      parameters:
+        - $ref: '#/components/parameters/ApplicationId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApprovalDecisionRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/GenericCreated' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /attendance/config:
+    get:
+      tags: [Attendance]
+      operationId: getAttendanceConfig
+      summary: 查询考勤配置
+      x-phase: 2
+      x-permission: HRS:ATTENDANCE:CONFIG
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+    put:
+      tags: [Attendance]
+      operationId: replaceAttendanceConfig
+      summary: 更新考勤配置
+      x-phase: 2
+      x-permission: HRS:ATTENDANCE:CONFIG
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AttendanceConfig' }
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /attendance/types:
+    get:
+      tags: [Attendance]
+      operationId: listAttendanceTypes
+      summary: 查询考勤类型
+      x-phase: 2
+      x-permission: HRS:ATTENDANCE:TYPE
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+    post:
+      tags: [Attendance]
+      operationId: createAttendanceType
+      summary: 新增考勤类型
+      x-phase: 2
+      x-permission: HRS:ATTENDANCE:TYPE
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AttendanceType' }
+      responses:
+        '201': { $ref: '#/components/responses/GenericCreated' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /attendance/types/{typeId}:
+    parameters:
+      - $ref: '#/components/parameters/TypeId'
+    patch:
+      tags: [Attendance]
+      operationId: updateAttendanceType
+      summary: 更新考勤类型
+      x-phase: 2
+      x-permission: HRS:ATTENDANCE:TYPE
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AttendanceType' }
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+    delete:
+      tags: [Attendance]
+      operationId: deleteAttendanceType
+      summary: 删除未被使用的考勤类型
+      x-phase: 2
+      x-permission: HRS:ATTENDANCE:TYPE
+      responses:
+        '204': { description: 已删除 }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /attendance/monthly-summaries:
+    get:
+      tags: [Attendance]
+      operationId: listMonthlyAttendanceSummaries
+      summary: 查询管理员月度考勤汇总
+      x-phase: 2
+      x-permission: HRS:ATTENDANCE:ADMIN
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/YearMonth'
+        - name: departmentId
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/PeriodStatus' }
+      responses:
+        '200': { $ref: '#/components/responses/GenericPageOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /attendance/periods/{periodId}/actions/calculate:
+    post:
+      tags: [Attendance]
+      operationId: calculateAttendancePeriod
+      summary: 触发月度考勤计算
+      x-phase: 2
+      x-permission: HRS:ATTENDANCE:CALC
+      parameters:
+        - $ref: '#/components/parameters/PeriodId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VersionedActionRequest' }
+      responses:
+        '202': { $ref: '#/components/responses/AcceptedJob' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /attendance/monthly-summaries/{summaryId}/adjustments:
+    post:
+      tags: [Attendance]
+      operationId: adjustMonthlyAttendanceSummary
+      summary: 手动调整月度考勤
+      x-phase: 2
+      x-permission: HRS:ATTENDANCE:ADMIN
+      parameters:
+        - $ref: '#/components/parameters/SummaryId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AttendanceAdjustmentRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/GenericCreated' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /attendance/periods/{periodId}/actions/settle:
+    post:
+      tags: [Attendance]
+      operationId: settleAttendancePeriod
+      summary: 结算并锁定月度考勤
+      x-phase: 2
+      x-permission: HRS:ATTENDANCE:ADMIN
+      parameters:
+        - $ref: '#/components/parameters/PeriodId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VersionedActionRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /attendance/adjustment-logs:
+    get:
+      tags: [Attendance]
+      operationId: listAttendanceAdjustmentLogs
+      summary: 查询考勤调整日志
+      x-phase: 2
+      x-permission: HRS:ATTENDANCE:ADMIN
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/YearMonth'
+      responses:
+        '200': { $ref: '#/components/responses/GenericPageOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+
+  /salary/config:
+    get:
+      tags: [Salary]
+      operationId: getSalaryConfig
+      summary: 查询薪资日期配置
+      x-phase: 3
+      x-permission: HRS:SALARY:CONFIG
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+    put:
+      tags: [Salary]
+      operationId: replaceSalaryConfig
+      summary: 更新薪资日期配置
+      x-phase: 3
+      x-permission: HRS:SALARY:CONFIG
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SalaryConfig' }
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /salary/types:
+    get:
+      tags: [Salary]
+      operationId: listSalaryTypes
+      summary: 查询薪资类型
+      x-phase: 3
+      x-permission: HRS:SALARY:TYPE
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+    post:
+      tags: [Salary]
+      operationId: createSalaryType
+      summary: 新增薪资类型
+      x-phase: 3
+      x-permission: HRS:SALARY:TYPE
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SalaryType' }
+      responses:
+        '201': { $ref: '#/components/responses/GenericCreated' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /salary/types/{typeId}:
+    parameters:
+      - $ref: '#/components/parameters/TypeId'
+    patch:
+      tags: [Salary]
+      operationId: updateSalaryType
+      summary: 更新薪资类型
+      x-phase: 3
+      x-permission: HRS:SALARY:TYPE
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SalaryType' }
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+    delete:
+      tags: [Salary]
+      operationId: deactivateSalaryType
+      summary: 停用未被使用的薪资类型
+      x-phase: 3
+      x-permission: HRS:SALARY:TYPE
+      responses:
+        '204': { description: 已停用 }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /salary/items:
+    get:
+      tags: [Salary]
+      operationId: listSalaryItems
+      summary: 查询固定与自定义薪资项目
+      x-phase: 3
+      x-permission: HRS:SALARY:ITEM
+      responses:
+        '200':
+          description: 薪资项目列表
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SalaryItemListResponse' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+    post:
+      tags: [Salary]
+      operationId: createSalaryItem
+      summary: 新增自定义薪资项目
+      x-phase: 3
+      x-permission: HRS:SALARY:ITEM
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SalaryItemDefinition' }
+      responses:
+        '201': { $ref: '#/components/responses/GenericCreated' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /salary/items/{itemId}:
+    parameters:
+      - $ref: '#/components/parameters/ItemId'
+    patch:
+      tags: [Salary]
+      operationId: updateSalaryItem
+      summary: 更新自定义薪资项目
+      x-phase: 3
+      x-permission: HRS:SALARY:ITEM
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SalaryItemDefinition' }
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+    delete:
+      tags: [Salary]
+      operationId: deactivateSalaryItem
+      summary: 停用自定义薪资项目
+      x-phase: 3
+      x-permission: HRS:SALARY:ITEM
+      responses:
+        '204': { description: 已停用 }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /salary/templates:
+    get:
+      tags: [Salary]
+      operationId: listSalaryTemplates
+      summary: 查询薪资明细模板
+      x-phase: 3
+      x-permission: HRS:SALARY:TEMPLATE
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+    post:
+      tags: [Salary]
+      operationId: createSalaryTemplate
+      summary: 新增薪资明细模板
+      x-phase: 3
+      x-permission: HRS:SALARY:TEMPLATE
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SalaryTemplate' }
+      responses:
+        '201': { $ref: '#/components/responses/GenericCreated' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /salary/templates/{templateId}:
+    parameters:
+      - $ref: '#/components/parameters/TemplateId'
+    get:
+      tags: [Salary]
+      operationId: getSalaryTemplate
+      summary: 查询薪资明细模板详情
+      x-phase: 3
+      x-permission: HRS:SALARY:TEMPLATE
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+    patch:
+      tags: [Salary]
+      operationId: updateSalaryTemplate
+      summary: 更新薪资明细模板
+      x-phase: 3
+      x-permission: HRS:SALARY:TEMPLATE
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SalaryTemplate' }
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /salary/templates/{templateId}/actions/preview:
+    post:
+      tags: [Salary]
+      operationId: previewSalaryTemplate
+      summary: 生成模板预览 PDF
+      x-phase: 3
+      x-permission: HRS:SALARY:TEMPLATE
+      parameters:
+        - $ref: '#/components/parameters/TemplateId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202': { $ref: '#/components/responses/AcceptedJob' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /salary/periods:
+    get:
+      tags: [Salary]
+      operationId: listSalaryPeriods
+      summary: 查询月度薪资期间
+      x-phase: 3
+      x-permission: HRS:SALARY:ADMIN
+      parameters:
+        - name: year
+          in: query
+          schema: { type: integer, minimum: 2000, maximum: 2100 }
+      responses:
+        '200':
+          description: 薪资期间列表
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SalaryPeriodListResponse' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /salary/periods/{periodId}:
+    get:
+      tags: [Salary]
+      operationId: getSalaryPeriod
+      summary: 查询月度薪资进度与摘要
+      x-phase: 3
+      x-permission: HRS:SALARY:ADMIN
+      parameters:
+        - $ref: '#/components/parameters/PeriodId'
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /salary/periods/{periodId}/actions/calculate:
+    post:
+      tags: [Salary]
+      operationId: calculateSalaryPeriod
+      summary: 触发月度薪资计算
+      x-phase: 3
+      x-permission: HRS:SALARY:CALC
+      parameters:
+        - $ref: '#/components/parameters/PeriodId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VersionedActionRequest' }
+      responses:
+        '202': { $ref: '#/components/responses/AcceptedJob' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /salary/periods/{periodId}/issues:
+    get:
+      tags: [Salary]
+      operationId: listSalaryCalculationIssues
+      summary: 查询薪资计算异常
+      x-phase: 3
+      x-permission: HRS:SALARY:ADMIN
+      parameters:
+        - $ref: '#/components/parameters/PeriodId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200': { $ref: '#/components/responses/GenericPageOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /salary/details:
+    get:
+      tags: [Salary]
+      operationId: listSalaryDetails
+      summary: 查询管理员职员薪资列表
+      x-phase: 3
+      x-permission: HRS:SALARY:ADMIN
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/YearMonth'
+        - name: departmentId
+          in: query
+          schema: { type: string }
+        - name: confirmationStatus
+          in: query
+          schema: { $ref: '#/components/schemas/SalaryConfirmationStatus' }
+      responses:
+        '200': { $ref: '#/components/responses/GenericPageOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /salary/details/{detailId}:
+    get:
+      tags: [Salary]
+      operationId: getSalaryDetail
+      summary: 查询管理员薪资明细
+      x-phase: 3
+      x-permission: HRS:SALARY:ADMIN
+      parameters:
+        - $ref: '#/components/parameters/DetailId'
+      responses:
+        '200':
+          description: 薪资明细
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SalaryDetailResponse' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /salary/details/{detailId}/adjustments:
+    post:
+      tags: [Salary]
+      operationId: adjustSalaryDetail
+      summary: 调整允许修改的自定义项目
+      x-phase: 3
+      x-permission: HRS:SALARY:ADMIN
+      parameters:
+        - $ref: '#/components/parameters/DetailId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SalaryAdjustmentRequest' }
+      responses:
+        '201': { $ref: '#/components/responses/GenericCreated' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /salary/self/details:
+    get:
+      tags: [Salary]
+      operationId: listSelfSalaryDetails
+      summary: 查询本人已生成薪资月份
+      x-phase: 3
+      x-permission: HRS:SALARY:SELF_VIEW
+      parameters:
+        - name: year
+          in: query
+          schema: { type: integer }
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /salary/self/details/{detailId}:
+    get:
+      tags: [Salary]
+      operationId: getSelfSalaryDetail
+      summary: 查询本人薪资明细
+      x-phase: 3
+      x-permission: HRS:SALARY:SELF_VIEW
+      parameters:
+        - $ref: '#/components/parameters/DetailId'
+      responses:
+        '200':
+          description: 本人薪资明细
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SalaryDetailResponse' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /salary/self/details/{detailId}/actions/confirm:
+    post:
+      tags: [Salary]
+      operationId: confirmSelfSalaryDetail
+      summary: 职员确认薪资明细
+      x-phase: 3
+      x-permission: HRS:SALARY:SELF_VIEW
+      parameters:
+        - $ref: '#/components/parameters/DetailId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VersionedActionRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /salary/periods/{periodId}/actions/finalize:
+    post:
+      tags: [Salary]
+      operationId: finalizeSalaryPeriod
+      summary: 封账月度薪资
+      x-phase: 3
+      x-permission: HRS:SALARY:ADMIN
+      parameters:
+        - $ref: '#/components/parameters/PeriodId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FinalizeRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /salary/details/{detailId}/actions/generate-payslip:
+    post:
+      tags: [Salary]
+      operationId: generatePayslip
+      summary: 生成正式薪资明细 PDF
+      x-phase: 3
+      x-permission: HRS:SALARY:SELF_VIEW
+      parameters:
+        - $ref: '#/components/parameters/DetailId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202': { $ref: '#/components/responses/AcceptedJob' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /salary/periods/{periodId}/ledger-exports:
+    post:
+      tags: [Salary]
+      operationId: createLedgerExport
+      summary: 生成全银协薪资转账文件
+      x-phase: 3
+      x-permission: HRS:SALARY:LEDGER_EXPORT
+      parameters:
+        - $ref: '#/components/parameters/PeriodId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateLedgerExportRequest' }
+      responses:
+        '202': { $ref: '#/components/responses/AcceptedJob' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /salary/ledger-exports/{exportId}:
+    get:
+      tags: [Salary]
+      operationId: getLedgerExport
+      summary: 查询台账生成状态
+      x-phase: 3
+      x-permission: HRS:SALARY:LEDGER_EXPORT
+      parameters:
+        - $ref: '#/components/parameters/ExportId'
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /salary/ledger-exports/{exportId}/transfer-results:
+    post:
+      tags: [Salary]
+      operationId: registerBankTransferResult
+      summary: 登记银行处理结果
+      x-phase: 3
+      x-permission: HRS:SALARY:LEDGER_EXPORT
+      parameters:
+        - $ref: '#/components/parameters/ExportId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BankTransferResult' }
+      responses:
+        '201': { $ref: '#/components/responses/GenericCreated' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /salary/audit-entries:
+    get:
+      tags: [Salary]
+      operationId: listSalaryAuditEntries
+      summary: 查询薪资调整、封账和导出审计
+      x-phase: 3
+      x-permission: HRS:SALARY:ADMIN
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/YearMonth'
+      responses:
+        '200': { $ref: '#/components/responses/GenericPageOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+
+  /nencho/periods:
+    get:
+      tags: [Nencho]
+      operationId: listNenchoPeriods
+      summary: 查询年末调整期间
+      x-phase: 4
+      x-permission: HRS:NENCHO:CONFIG
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+    post:
+      tags: [Nencho]
+      operationId: createNenchoPeriod
+      summary: 新建年末调整期间
+      x-phase: 4
+      x-permission: HRS:NENCHO:CONFIG
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NenchoPeriod' }
+      responses:
+        '201': { $ref: '#/components/responses/GenericCreated' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /nencho/periods/{periodId}:
+    parameters:
+      - $ref: '#/components/parameters/PeriodId'
+    get:
+      tags: [Nencho]
+      operationId: getNenchoPeriod
+      summary: 查询年末调整期间详情
+      x-phase: 4
+      x-permission: HRS:NENCHO:CONFIG
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+    patch:
+      tags: [Nencho]
+      operationId: updateNenchoPeriod
+      summary: 更新未启用期间
+      x-phase: 4
+      x-permission: HRS:NENCHO:CONFIG
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NenchoPeriod' }
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /nencho/periods/{periodId}/actions/activate:
+    post:
+      tags: [Nencho]
+      operationId: activateNenchoPeriod
+      summary: 启用年末调整并通知对象职员
+      x-phase: 4
+      x-permission: HRS:NENCHO:CONFIG
+      parameters:
+        - $ref: '#/components/parameters/PeriodId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VersionedActionRequest' }
+      responses:
+        '202': { $ref: '#/components/responses/AcceptedJob' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /nencho/periods/{periodId}/targets:
+    get:
+      tags: [Nencho]
+      operationId: listNenchoTargets
+      summary: 查询对象职员
+      x-phase: 4
+      x-permission: HRS:NENCHO:TARGET
+      parameters:
+        - $ref: '#/components/parameters/PeriodId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200': { $ref: '#/components/responses/GenericPageOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+    post:
+      tags: [Nencho]
+      operationId: addNenchoTargets
+      summary: 手动追加对象职员
+      x-phase: 4
+      x-permission: HRS:NENCHO:TARGET
+      parameters:
+        - $ref: '#/components/parameters/PeriodId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [employeeIds]
+              properties:
+                employeeIds:
+                  type: array
+                  minItems: 1
+                  items: { type: string }
+                reason: { type: string, maxLength: 500 }
+      responses:
+        '201': { $ref: '#/components/responses/GenericCreated' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /nencho/periods/{periodId}/targets/{employeeId}:
+    delete:
+      tags: [Nencho]
+      operationId: excludeNenchoTarget
+      summary: 排除对象职员
+      x-phase: 4
+      x-permission: HRS:NENCHO:TARGET
+      parameters:
+        - $ref: '#/components/parameters/PeriodId'
+        - $ref: '#/components/parameters/EmployeeId'
+        - name: reason
+          in: query
+          schema: { type: string, maxLength: 500 }
+      responses:
+        '204': { description: 已排除 }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /nencho/self/declarations:
+    get:
+      tags: [Nencho]
+      operationId: listSelfNenchoDeclarations
+      summary: 查询本人申告书
+      x-phase: 4
+      x-permission: HRS:NENCHO:SELF_DECLARE
+      parameters:
+        - name: periodId
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /nencho/self/declarations/{declarationId}:
+    parameters:
+      - $ref: '#/components/parameters/DeclarationId'
+    get:
+      tags: [Nencho]
+      operationId: getSelfNenchoDeclaration
+      summary: 查询本人申告详情
+      x-phase: 4
+      x-permission: HRS:NENCHO:SELF_DECLARE
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+    put:
+      tags: [Nencho]
+      operationId: saveSelfNenchoDeclaration
+      summary: 保存申告草稿
+      x-phase: 4
+      x-permission: HRS:NENCHO:SELF_DECLARE
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NenchoDeclaration' }
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /nencho/self/declarations/{declarationId}/certificates:
+    post:
+      tags: [Nencho]
+      operationId: uploadDeductionCertificate
+      summary: 上传控除证明文件
+      x-phase: 4
+      x-permission: HRS:NENCHO:SELF_DECLARE
+      parameters:
+        - $ref: '#/components/parameters/DeclarationId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [certificateType, file]
+              properties:
+                certificateType: { type: string }
+                file: { type: string, format: binary }
+      responses:
+        '202': { $ref: '#/components/responses/AcceptedJob' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /nencho/self/declarations/{declarationId}/certificates/{certificateId}:
+    delete:
+      tags: [Nencho]
+      operationId: deleteDeductionCertificate
+      summary: 删除未提交证明文件
+      x-phase: 4
+      x-permission: HRS:NENCHO:SELF_DECLARE
+      parameters:
+        - $ref: '#/components/parameters/DeclarationId'
+        - $ref: '#/components/parameters/CertificateId'
+      responses:
+        '204': { description: 已删除 }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /nencho/self/declarations/{declarationId}/actions/submit:
+    post:
+      tags: [Nencho]
+      operationId: submitNenchoDeclaration
+      summary: 提交申告书
+      x-phase: 4
+      x-permission: HRS:NENCHO:SELF_DECLARE
+      parameters:
+        - $ref: '#/components/parameters/DeclarationId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VersionedActionRequest' }
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /nencho/review/declarations:
+    get:
+      tags: [Nencho]
+      operationId: listNenchoDeclarationsForReview
+      summary: 查询管理员申告进度
+      x-phase: 4
+      x-permission: HRS:NENCHO:REVIEW
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: periodId
+          in: query
+          required: true
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/NenchoDeclarationStatus' }
+      responses:
+        '200': { $ref: '#/components/responses/GenericPageOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /nencho/review/declarations/{declarationId}:
+    get:
+      tags: [Nencho]
+      operationId: getNenchoDeclarationForReview
+      summary: 查询申告审核详情与附件
+      x-phase: 4
+      x-permission: HRS:NENCHO:REVIEW
+      parameters:
+        - $ref: '#/components/parameters/DeclarationId'
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /nencho/review/declarations/{declarationId}/decisions:
+    post:
+      tags: [Nencho]
+      operationId: decideNenchoDeclaration
+      summary: 确认或差戻し申告书
+      x-phase: 4
+      x-permission: HRS:NENCHO:REVIEW
+      parameters:
+        - $ref: '#/components/parameters/DeclarationId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/ApprovalDecisionRequest'
+                - type: object
+                  properties:
+                    decision: { type: string, enum: [CONFIRM, RETURN] }
+      responses:
+        '201': { $ref: '#/components/responses/GenericCreated' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /nencho/periods/{periodId}/actions/migrate-previous-data:
+    post:
+      tags: [Nencho]
+      operationId: migratePreviousNenchoData
+      summary: 引继前年申告基础数据
+      x-phase: 4
+      x-permission: HRS:NENCHO:DATA_MIGRATE
+      parameters:
+        - $ref: '#/components/parameters/PeriodId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '202': { $ref: '#/components/responses/AcceptedJob' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /nencho/tax-parameters:
+    get:
+      tags: [Nencho]
+      operationId: listTaxParameterVersions
+      summary: 查询税法参数版本
+      x-phase: 4
+      x-permission: HRS:NENCHO:TAX_PARAM
+      parameters:
+        - name: year
+          in: query
+          schema: { type: integer }
+      responses:
+        '200': { $ref: '#/components/responses/GenericOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+    post:
+      tags: [Nencho]
+      operationId: createTaxParameterVersion
+      summary: 新增税法参数版本
+      x-phase: 4
+      x-permission: HRS:NENCHO:TAX_PARAM
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TaxParameterVersion' }
+      responses:
+        '201': { $ref: '#/components/responses/GenericCreated' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /nencho/periods/{periodId}/actions/calculate:
+    post:
+      tags: [Nencho]
+      operationId: calculateNenchoPeriod
+      summary: 触发年末调整计算
+      x-phase: 4
+      x-permission: HRS:NENCHO:CALC
+      parameters:
+        - $ref: '#/components/parameters/PeriodId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VersionedActionRequest' }
+      responses:
+        '202': { $ref: '#/components/responses/AcceptedJob' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /nencho/periods/{periodId}/results:
+    get:
+      tags: [Nencho]
+      operationId: listNenchoResults
+      summary: 查询過不足税额
+      x-phase: 4
+      x-permission: HRS:NENCHO:CALC
+      parameters:
+        - $ref: '#/components/parameters/PeriodId'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200': { $ref: '#/components/responses/GenericPageOk' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /nencho/periods/{periodId}/actions/settle:
+    post:
+      tags: [Nencho]
+      operationId: settleNenchoPeriod
+      summary: 将過不足税额反映到薪资
+      x-phase: 4
+      x-permission: HRS:NENCHO:ADJUST
+      parameters:
+        - $ref: '#/components/parameters/PeriodId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [version, salaryPeriodId, reason]
+              properties:
+                version: { type: integer, minimum: 1 }
+                salaryPeriodId: { type: string }
+                reason: { type: string, minLength: 1, maxLength: 500 }
+      responses:
+        '202': { $ref: '#/components/responses/AcceptedJob' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /nencho/periods/{periodId}/withholding-tax-slip-batches:
+    post:
+      tags: [Nencho]
+      operationId: createWithholdingTaxSlipBatch
+      summary: 批量生成源泉徴収票
+      x-phase: 4
+      x-permission: HRS:NENCHO:TAX_SLIP
+      parameters:
+        - $ref: '#/components/parameters/PeriodId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [format]
+              properties:
+                format: { type: string, enum: [EMPLOYEE, TAX_OFFICE] }
+                employeeIds:
+                  type: array
+                  items: { type: string }
+      responses:
+        '202': { $ref: '#/components/responses/AcceptedJob' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+  /nencho/periods/{periodId}/statutory-report-batches:
+    post:
+      tags: [Nencho]
+      operationId: createStatutoryReportBatch
+      summary: 生成法定调书
+      x-phase: 4
+      x-permission: HRS:NENCHO:STAT_REPORT
+      parameters:
+        - $ref: '#/components/parameters/PeriodId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reportTypes]
+              properties:
+                reportTypes:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+                    enum: [SALARY_PAYMENT_INDIVIDUAL, SALARY_PAYMENT_SUMMARY, STATUTORY_TOTAL]
+      responses:
+        '202': { $ref: '#/components/responses/AcceptedJob' }
+        default: { $ref: '#/components/responses/ErrorResponse' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PageSize:
+      name: pageSize
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    Sort:
+      name: sort
+      in: query
+      description: field:asc,otherField:desc
+      schema: { type: string }
+    YearMonth:
+      name: yearMonth
+      in: query
+      required: true
+      schema: { type: string, pattern: '^\\d{4}-(0[1-9]|1[0-2])$' }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+    EmployeeId: { name: employeeId, in: path, required: true, schema: { type: string } }
+    AccountId: { name: accountId, in: path, required: true, schema: { type: string } }
+    RoleId: { name: roleId, in: path, required: true, schema: { type: string } }
+    JobId: { name: jobId, in: path, required: true, schema: { type: string } }
+    FileId: { name: fileId, in: path, required: true, schema: { type: string } }
+    RecordId: { name: recordId, in: path, required: true, schema: { type: string } }
+    RequestId: { name: requestId, in: path, required: true, schema: { type: string } }
+    ApplicationId: { name: applicationId, in: path, required: true, schema: { type: string } }
+    TypeId: { name: typeId, in: path, required: true, schema: { type: string } }
+    PeriodId: { name: periodId, in: path, required: true, schema: { type: string } }
+    SummaryId: { name: summaryId, in: path, required: true, schema: { type: string } }
+    ItemId: { name: itemId, in: path, required: true, schema: { type: string } }
+    TemplateId: { name: templateId, in: path, required: true, schema: { type: string } }
+    DetailId: { name: detailId, in: path, required: true, schema: { type: string } }
+    ExportId: { name: exportId, in: path, required: true, schema: { type: string } }
+    DeclarationId: { name: declarationId, in: path, required: true, schema: { type: string } }
+    CertificateId: { name: certificateId, in: path, required: true, schema: { type: string } }
+  responses:
+    GenericOk:
+      description: 成功
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/GenericResponse' }
+    GenericCreated:
+      description: 已创建
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/GenericResponse' }
+    GenericPageOk:
+      description: 分页成功
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/GenericPageResponse' }
+    AcceptedJob:
+      description: 已接受异步任务
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/JobResponse' }
+    ErrorResponse:
+      description: 统一错误；具体 HTTP 状态由响应决定
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ApiErrorResponse' }
+          examples:
+            validation:
+              value:
+                success: false
+                code: HRS_VALIDATION_FAILED
+                message: 入力内容を確認してください
+                data: null
+                errors: [{ field: status, reason: invalidState }]
+                requestId: req_01
+  schemas:
+    ApiResponseBase:
+      type: object
+      required: [success, code, message, requestId]
+      properties:
+        success: { type: boolean }
+        code: { type: string }
+        message: { type: string }
+        requestId: { type: string }
+    GenericResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: { type: object, additionalProperties: true }
+    GenericPageResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data:
+              type: object
+              required: [items, page, pageSize, total]
+              properties:
+                items: { type: array, items: { type: object, additionalProperties: true } }
+                page: { type: integer, minimum: 1 }
+                pageSize: { type: integer, minimum: 1, maximum: 100 }
+                total: { type: integer, minimum: 0 }
+    ApiErrorResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          required: [success, data]
+          properties:
+            success: { const: false }
+            data: { type: 'null' }
+            errors:
+              type: array
+              items:
+                type: object
+                required: [reason]
+                properties:
+                  field: { type: string }
+                  reason: { type: string }
+    DataScope:
+      type: object
+      required: [type]
+      properties:
+        type: { type: string, enum: [SELF, DEPARTMENT, DEPARTMENT_TREE, SELECTED_DEPARTMENTS, ALL] }
+        departmentIds: { type: array, items: { type: string } }
+    SessionContext:
+      type: object
+      required: [accountId, displayName, locale, roles, grantedPermissions, revokedPermissions, effectivePermissions, dataScope]
+      properties:
+        accountId: { type: string }
+        employeeId: { type: [string, 'null'] }
+        displayName: { type: string }
+        locale: { type: string, enum: [ja-JP, zh-CN] }
+        roles: { type: array, items: { $ref: '#/components/schemas/RoleSummary' } }
+        grantedPermissions: { type: array, items: { type: string } }
+        revokedPermissions: { type: array, items: { type: string } }
+        effectivePermissions: { type: array, items: { type: string } }
+        dataScope: { $ref: '#/components/schemas/DataScope' }
+    SessionContextResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          required: [data]
+          properties:
+            data: { $ref: '#/components/schemas/SessionContext' }
+    Department:
+      type: object
+      required: [id, name, code]
+      properties:
+        id: { type: string }
+        code: { type: string }
+        name: { type: string }
+        parentId: { type: [string, 'null'] }
+    DepartmentListResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data: { type: array, items: { $ref: '#/components/schemas/Department' } }
+    FeatureCapability:
+      type: object
+      required: [code, enabled, phase]
+      properties:
+        code: { type: string }
+        enabled: { type: boolean }
+        phase: { type: integer, minimum: 0 }
+        reason: { type: string }
+    CapabilityListResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data: { type: array, items: { $ref: '#/components/schemas/FeatureCapability' } }
+    JobStatus: { type: string, enum: [QUEUED, RUNNING, SUCCEEDED, FAILED, CANCELLED] }
+    AsyncJob:
+      type: object
+      required: [jobId, type, status, progress, createdAt]
+      properties:
+        jobId: { type: string }
+        type: { type: string }
+        status: { $ref: '#/components/schemas/JobStatus' }
+        progress: { type: integer, minimum: 0, maximum: 100 }
+        result: { type: [object, 'null'], additionalProperties: true }
+        error: { type: [object, 'null'], additionalProperties: true }
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: [string, 'null'], format: date-time }
+    JobResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data: { $ref: '#/components/schemas/AsyncJob' }
+    DownloadTicket:
+      type: object
+      required: [ticketId, downloadUrl, expiresAt]
+      properties:
+        ticketId: { type: string }
+        downloadUrl: { type: string, format: uri }
+        expiresAt: { type: string, format: date-time }
+    DownloadTicketResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data: { $ref: '#/components/schemas/DownloadTicket' }
+    EmployeeStatus: { type: string, enum: [ACTIVE, RESIGNED, SUSPENDED] }
+    EmploymentProfile:
+      type: object
+      properties:
+        hireDate: { type: string, format: date }
+        departmentId: { type: string }
+        departmentName: { type: string, readOnly: true }
+        positionId: { type: string }
+        positionName: { type: string, readOnly: true }
+        employmentType: { type: string }
+        attendanceTypeId: { type: string }
+    EmployeeSalaryProfile:
+      type: object
+      required: [version, salaryTypeId]
+      properties:
+        version: { type: integer, minimum: 1 }
+        salaryTypeId: { type: string }
+        baseSalary: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+        hourlyWage: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+        currency: { type: string, const: JPY }
+    Employee:
+      type: object
+      required: [id, employeeNo, name, nameKana, status, employment, version, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        employeeNo: { type: string }
+        name: { type: string }
+        nameKana: { type: string }
+        status: { $ref: '#/components/schemas/EmployeeStatus' }
+        employment: { $ref: '#/components/schemas/EmploymentProfile' }
+        maskedBankAccountNumber: { type: [string, 'null'] }
+        version: { type: integer, minimum: 1 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    EmployeeResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data: { $ref: '#/components/schemas/Employee' }
+    EmployeePageResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [items, page, pageSize, total]
+              properties:
+                items: { type: array, items: { $ref: '#/components/schemas/Employee' } }
+                page: { type: integer }
+                pageSize: { type: integer }
+                total: { type: integer }
+    CreateEmployeeRequest:
+      type: object
+      required: [employeeNo, name, nameKana, employment]
+      properties:
+        employeeNo: { type: string, minLength: 1, maxLength: 30 }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        nameKana: { type: string, minLength: 1, maxLength: 100 }
+        employment: { $ref: '#/components/schemas/EmploymentProfile' }
+        salaryProfile: { $ref: '#/components/schemas/EmployeeSalaryProfile' }
+        username: { type: string, minLength: 3, maxLength: 50 }
+    UpdateEmployeeRequest:
+      type: object
+      required: [version]
+      properties:
+        version: { type: integer, minimum: 1 }
+        name: { type: string, minLength: 1, maxLength: 100 }
+        nameKana: { type: string, minLength: 1, maxLength: 100 }
+        employment: { $ref: '#/components/schemas/EmploymentProfile' }
+    EmployeeStatusTransitionRequest:
+      type: object
+      required: [version, toStatus, effectiveDate, reason]
+      properties:
+        version: { type: integer, minimum: 1 }
+        toStatus: { $ref: '#/components/schemas/EmployeeStatus' }
+        effectiveDate: { type: string, format: date }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    EmployeeStatusTransitionResponse:
+      allOf:
+        - $ref: '#/components/schemas/GenericResponse'
+    EmployeeBankAccount:
+      type: object
+      required: [bankName, branchName, accountType, maskedAccountNumber, accountHolderName, version]
+      properties:
+        bankName: { type: string }
+        branchName: { type: string }
+        accountType: { type: string, enum: [ORDINARY, CURRENT, SAVINGS] }
+        maskedAccountNumber: { type: string, examples: ['****1234'] }
+        accountHolderName: { type: string }
+        version: { type: integer, minimum: 1 }
+    BankAccountResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data: { $ref: '#/components/schemas/EmployeeBankAccount' }
+    UpdateBankAccountRequest:
+      type: object
+      required: [version, bankName, branchName, accountType, accountNumber, accountHolderName]
+      properties:
+        version: { type: integer, minimum: 1 }
+        bankName: { type: string }
+        branchName: { type: string }
+        accountType: { type: string, enum: [ORDINARY, CURRENT, SAVINGS] }
+        accountNumber: { type: string, pattern: '^\\d{1,20}$', writeOnly: true }
+        accountHolderName: { type: string }
+    RoleSummary:
+      type: object
+      required: [id, code, name]
+      properties:
+        id: { type: string }
+        code: { type: string }
+        name: { type: string }
+    RoleTemplate:
+      allOf:
+        - $ref: '#/components/schemas/RoleSummary'
+        - type: object
+          required: [permissions, version]
+          properties:
+            permissions: { type: array, items: { type: string } }
+            version: { type: integer, minimum: 1 }
+    RoleListResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data: { type: array, items: { $ref: '#/components/schemas/RoleTemplate' } }
+    CreateRoleRequest:
+      type: object
+      required: [code, name, permissions]
+      properties:
+        code: { type: string, pattern: '^[A-Z][A-Z0-9_]*$' }
+        name: { type: string }
+        permissions: { type: array, uniqueItems: true, items: { type: string } }
+    UpdateRoleRequest:
+      type: object
+      required: [version, name, permissions]
+      properties:
+        version: { type: integer, minimum: 1 }
+        name: { type: string }
+        permissions: { type: array, uniqueItems: true, items: { type: string } }
+    AccountAccess:
+      type: object
+      required: [accountId, roles, grantedPermissions, revokedPermissions, effectivePermissions, dataScope, version]
+      properties:
+        accountId: { type: string }
+        roles: { type: array, items: { $ref: '#/components/schemas/RoleSummary' } }
+        grantedPermissions: { type: array, items: { type: string } }
+        revokedPermissions: { type: array, items: { type: string } }
+        effectivePermissions: { type: array, items: { type: string } }
+        dataScope: { $ref: '#/components/schemas/DataScope' }
+        version: { type: integer, minimum: 1 }
+    AccountAccessResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data: { $ref: '#/components/schemas/AccountAccess' }
+    UpdateAccountAccessRequest:
+      type: object
+      required: [version, roleIds, grantedPermissions, revokedPermissions, dataScope, reason]
+      properties:
+        version: { type: integer, minimum: 1 }
+        roleIds: { type: array, items: { type: string } }
+        grantedPermissions: { type: array, items: { type: string } }
+        revokedPermissions: { type: array, items: { type: string } }
+        dataScope: { $ref: '#/components/schemas/DataScope' }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    AttendanceEventType: { type: string, enum: [CLOCK_IN, BREAK_START, BREAK_END, CLOCK_OUT] }
+    AttendanceDayState: { type: string, enum: [NOT_STARTED, WORKING, ON_BREAK, COMPLETED, NEEDS_REVIEW] }
+    AttendanceRecordStatus: { type: string, enum: [NORMAL, PENDING_CORRECTION, CORRECTED] }
+    AttendanceEvent:
+      type: object
+      required: [id, type, occurredAt, source, createdAt]
+      properties:
+        id: { type: string }
+        type: { $ref: '#/components/schemas/AttendanceEventType' }
+        occurredAt: { type: string, format: date-time }
+        source: { type: string, enum: [WEB, MOBILE, ADMIN_CORRECTION] }
+        ipCheck: { type: string, enum: [NOT_REQUIRED, PASSED, FAILED] }
+        gpsCheck: { type: string, enum: [NOT_REQUIRED, PASSED, FAILED, UNAVAILABLE] }
+        createdAt: { type: string, format: date-time }
+    DailyAttendanceSummary:
+      type: object
+      required: [date, state, workMinutes, breakMinutes, status, version]
+      properties:
+        id: { type: string }
+        date: { type: string, format: date }
+        state: { $ref: '#/components/schemas/AttendanceDayState' }
+        workMinutes: { type: integer, minimum: 0 }
+        breakMinutes: { type: integer, minimum: 0 }
+        overtimeMinutes: { type: integer, minimum: 0 }
+        lateMinutes: { type: integer, minimum: 0 }
+        earlyLeaveMinutes: { type: integer, minimum: 0 }
+        status: { $ref: '#/components/schemas/AttendanceRecordStatus' }
+        version: { type: integer, minimum: 1 }
+    TodayAttendance:
+      type: object
+      required: [date, state, events, summary, allowedEvents]
+      properties:
+        date: { type: string, format: date }
+        state: { $ref: '#/components/schemas/AttendanceDayState' }
+        events: { type: array, items: { $ref: '#/components/schemas/AttendanceEvent' } }
+        summary: { $ref: '#/components/schemas/DailyAttendanceSummary' }
+        allowedEvents: { type: array, items: { $ref: '#/components/schemas/AttendanceEventType' } }
+    TodayAttendanceResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data: { $ref: '#/components/schemas/TodayAttendance' }
+    CreateAttendanceEventRequest:
+      type: object
+      required: [type, occurredAt]
+      properties:
+        type: { $ref: '#/components/schemas/AttendanceEventType' }
+        occurredAt: { type: string, format: date-time }
+        gps:
+          type: object
+          properties:
+            latitude: { type: number, minimum: -90, maximum: 90 }
+            longitude: { type: number, minimum: -180, maximum: 180 }
+            accuracyMeters: { type: number, minimum: 0 }
+    ApprovalStatus: { type: string, enum: [PENDING, APPROVED, REJECTED] }
+    ApprovalDecisionRequest:
+      type: object
+      required: [version, decision]
+      properties:
+        version: { type: integer, minimum: 1 }
+        decision: { type: string, enum: [APPROVE, REJECT] }
+        comment: { type: string, maxLength: 500 }
+    CreateModificationRequest:
+      type: object
+      required: [recordId, recordVersion, requestedEvents, reason]
+      properties:
+        recordId: { type: string }
+        recordVersion: { type: integer, minimum: 1 }
+        requestedEvents:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [type, occurredAt]
+            properties:
+              type: { $ref: '#/components/schemas/AttendanceEventType' }
+              occurredAt: { type: string, format: date-time }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    LeaveStatus: { type: string, enum: [PENDING, APPROVED, REJECTED, CANCELLED] }
+    CreateLeaveApplicationRequest:
+      type: object
+      required: [leaveTypeId, startsAt, endsAt, reason]
+      properties:
+        leaveTypeId: { type: string }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    AttendanceConfig:
+      type: object
+      required: [settlementDay, roundingRules, version]
+      properties:
+        settlementDay: { oneOf: [{ type: integer, minimum: 1, maximum: 28 }, { const: MONTH_END }] }
+        ipRestrictionEnabled: { type: boolean }
+        ipWhitelist: { type: array, items: { type: string } }
+        gpsRestrictionEnabled: { type: boolean }
+        gpsCenter:
+          type: object
+          properties:
+            latitude: { type: number }
+            longitude: { type: number }
+            radiusMeters: { type: integer, minimum: 1 }
+        roundingRules:
+          type: object
+          required: [lateMinutes, earlyLeaveMinutes, overtimeMinutes]
+          properties:
+            lateMinutes: { type: integer, minimum: 1 }
+            earlyLeaveMinutes: { type: integer, minimum: 1 }
+            overtimeMinutes: { type: integer, minimum: 1 }
+        effectiveFrom: { type: string, format: date }
+        version: { type: integer, minimum: 1 }
+    AttendanceType:
+      type: object
+      required: [code, name, mode, version]
+      properties:
+        id: { type: string, readOnly: true }
+        code: { type: string }
+        name: { type: string }
+        mode: { type: string, enum: [FIXED, SCHEDULE, FLEXIBLE] }
+        defaultStartTime: { type: string, pattern: '^([01]\\d|2[0-3]):[0-5]\\d$' }
+        defaultEndTime: { type: string, pattern: '^([01]\\d|2[0-3]):[0-5]\\d$' }
+        targetMinutesPerDay: { type: integer, minimum: 0 }
+        description: { type: string }
+        version: { type: integer, minimum: 1 }
+    PeriodStatus: { type: string, enum: [OPEN, CALCULATING, CALCULATED, SETTLED, FAILED] }
+    AttendanceAdjustmentRequest:
+      type: object
+      required: [version, changes, reason]
+      properties:
+        version: { type: integer, minimum: 1 }
+        changes: { type: object, additionalProperties: { type: integer } }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    Money:
+      type: string
+      pattern: '^\\d{1,14}(\\.\\d{1,4})?$'
+      examples: ['320000.00']
+    SalaryConfig:
+      type: object
+      required: [settlementDay, confirmationDeadlineDay, payDay, effectiveFrom, version]
+      properties:
+        settlementDay: { oneOf: [{ type: integer, minimum: 1, maximum: 28 }, { const: MONTH_END }] }
+        confirmationDeadlineDay: { oneOf: [{ type: integer, minimum: 1, maximum: 28 }, { const: MONTH_END }] }
+        payDay: { oneOf: [{ type: integer, minimum: 1, maximum: 28 }, { const: MONTH_END }] }
+        effectiveFrom: { type: string, format: date }
+        version: { type: integer, minimum: 1 }
+    SalaryType:
+      type: object
+      required: [code, name, method, version]
+      properties:
+        id: { type: string, readOnly: true }
+        code: { type: string }
+        name: { type: string }
+        method: { type: string, enum: [FIXED, HOURLY, SPECIAL] }
+        description: { type: string }
+        version: { type: integer, minimum: 1 }
+    SalaryItemDefinition:
+      type: object
+      required: [code, name, nameJa, kind, sign, calculationMethod, rounding, active, version]
+      properties:
+        id: { type: string, readOnly: true }
+        code: { type: string }
+        name: { type: string }
+        nameJa: { type: string }
+        kind: { type: string, enum: [FIXED, CUSTOM] }
+        sign: { type: string, enum: [CREDIT, DEBIT] }
+        calculationMethod: { type: string, enum: [SYSTEM, FIXED_AMOUNT, PERCENTAGE] }
+        amount: { oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }] }
+        percentage: { type: [string, 'null'], pattern: '^\\d{1,3}(\\.\\d{1,4})?$' }
+        baseItemId: { type: [string, 'null'] }
+        rounding:
+          type: object
+          required: [decimalPlaces, method]
+          properties:
+            decimalPlaces: { type: integer, minimum: 0, maximum: 4 }
+            method: { type: string, enum: [UP, DOWN, HALF_UP] }
+        active: { type: boolean }
+        version: { type: integer, minimum: 1 }
+    SalaryItemListResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data: { type: array, items: { $ref: '#/components/schemas/SalaryItemDefinition' } }
+    SalaryTemplate:
+      type: object
+      required: [name, itemIds, layout, version]
+      properties:
+        id: { type: string, readOnly: true }
+        name: { type: string }
+        itemIds: { type: array, items: { type: string } }
+        layout: { type: object, additionalProperties: true }
+        default: { type: boolean }
+        version: { type: integer, minimum: 1 }
+    SalaryPeriodStatus: { type: string, enum: [PENDING, CALCULATING, CALCULATED, FINALIZED, FAILED] }
+    SalaryConfirmationStatus: { type: string, enum: [UNCONFIRMED, CONFIRMED_BY_EMPLOYEE, AUTO_CONFIRMED] }
+    SalaryPeriod:
+      type: object
+      required: [id, yearMonth, status, employeeCount, confirmedCount, issueCount, version]
+      properties:
+        id: { type: string }
+        yearMonth: { type: string, pattern: '^\\d{4}-(0[1-9]|1[0-2])$' }
+        status: { $ref: '#/components/schemas/SalaryPeriodStatus' }
+        employeeCount: { type: integer, minimum: 0 }
+        confirmedCount: { type: integer, minimum: 0 }
+        issueCount: { type: integer, minimum: 0 }
+        totalNetPay: { $ref: '#/components/schemas/Money' }
+        version: { type: integer, minimum: 1 }
+    SalaryPeriodListResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data: { type: array, items: { $ref: '#/components/schemas/SalaryPeriod' } }
+    SalaryDetailItem:
+      type: object
+      required: [itemId, code, name, nameJa, sign, amount, editable]
+      properties:
+        itemId: { type: string }
+        code: { type: string }
+        name: { type: string }
+        nameJa: { type: string }
+        sign: { type: string, enum: [CREDIT, DEBIT] }
+        amount: { $ref: '#/components/schemas/Money' }
+        editable: { type: boolean }
+        manuallyAdjusted: { type: boolean }
+        note: { type: string }
+    SalaryDetail:
+      type: object
+      required: [id, employeeId, employeeName, yearMonth, status, confirmationStatus, items, totalCredit, totalDebit, netPay, version]
+      properties:
+        id: { type: string }
+        employeeId: { type: string }
+        employeeName: { type: string }
+        yearMonth: { type: string }
+        status: { $ref: '#/components/schemas/SalaryPeriodStatus' }
+        confirmationStatus: { $ref: '#/components/schemas/SalaryConfirmationStatus' }
+        confirmedAt: { type: [string, 'null'], format: date-time }
+        items: { type: array, items: { $ref: '#/components/schemas/SalaryDetailItem' } }
+        totalCredit: { $ref: '#/components/schemas/Money' }
+        totalDebit: { $ref: '#/components/schemas/Money' }
+        netPay: { $ref: '#/components/schemas/Money' }
+        version: { type: integer, minimum: 1 }
+    SalaryDetailResponse:
+      allOf:
+        - $ref: '#/components/schemas/ApiResponseBase'
+        - type: object
+          properties:
+            data: { $ref: '#/components/schemas/SalaryDetail' }
+    SalaryAdjustmentRequest:
+      type: object
+      required: [version, itemId, amount, reason]
+      properties:
+        version: { type: integer, minimum: 1 }
+        itemId: { type: string }
+        amount: { $ref: '#/components/schemas/Money' }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    FinalizeRequest:
+      type: object
+      required: [version, reason]
+      properties:
+        version: { type: integer, minimum: 1 }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    CreateLedgerExportRequest:
+      type: object
+      required: [zenginVersion, encoding]
+      properties:
+        zenginVersion: { type: string }
+        encoding: { type: string, enum: [SHIFT_JIS, UTF_8] }
+    ExportStatus: { type: string, enum: [QUEUED, GENERATING, READY, FAILED] }
+    BankTransferResult:
+      type: object
+      required: [processedAt, status, reference, version]
+      properties:
+        processedAt: { type: string, format: date-time }
+        status: { type: string, enum: [ACCEPTED, PARTIALLY_ACCEPTED, REJECTED, COMPLETED] }
+        reference: { type: string }
+        note: { type: string, maxLength: 500 }
+        resultFileId: { type: string }
+        version: { type: integer, minimum: 1 }
+    NenchoPeriodStatus: { type: string, enum: [DRAFT, ACTIVE, CLOSED, CALCULATING, CALCULATED, SETTLED] }
+    NenchoPeriod:
+      type: object
+      required: [year, receptionStartDate, receptionEndDate, calculationDate, adjustmentReflectMonth, status, version]
+      properties:
+        id: { type: string, readOnly: true }
+        year: { type: integer, minimum: 2000, maximum: 2100 }
+        receptionStartDate: { type: string, format: date }
+        receptionEndDate: { type: string, format: date }
+        calculationDate: { type: string, format: date }
+        adjustmentReflectMonth: { type: integer, minimum: 1, maximum: 12 }
+        status: { $ref: '#/components/schemas/NenchoPeriodStatus' }
+        version: { type: integer, minimum: 1 }
+    NenchoDeclarationStatus: { type: string, enum: [DRAFT, SUBMITTED, CONFIRMED, RETURNED] }
+    NenchoDeclaration:
+      type: object
+      required: [id, periodId, type, status, deductionItems, certificates, version]
+      properties:
+        id: { type: string }
+        periodId: { type: string }
+        type: { type: string, enum: [DEPENDENT, INSURANCE, BASIC, HOUSING] }
+        status: { $ref: '#/components/schemas/NenchoDeclarationStatus' }
+        deductionItems:
+          type: array
+          items:
+            type: object
+            required: [type, data]
+            properties:
+              type: { type: string }
+              data: { type: object, additionalProperties: true }
+        certificates:
+          type: array
+          items:
+            type: object
+            required: [id, type, fileId, scanStatus]
+            properties:
+              id: { type: string }
+              type: { type: string }
+              fileId: { type: string }
+              scanStatus: { type: string, enum: [PENDING, SAFE, REJECTED] }
+              ocrStatus: { type: string, enum: [NOT_REQUESTED, QUEUED, COMPLETED, FAILED] }
+              ocrResult: { type: [object, 'null'], additionalProperties: true }
+        returnedReason: { type: [string, 'null'] }
+        version: { type: integer, minimum: 1 }
+    TaxParameterVersion:
+      type: object
+      required: [year, category, effectiveFrom, parameters, version]
+      properties:
+        id: { type: string, readOnly: true }
+        year: { type: integer }
+        category: { type: string, enum: [TAX_RATE, DEDUCTION_LIMIT, INSURANCE_RATE] }
+        effectiveFrom: { type: string, format: date }
+        effectiveTo: { type: [string, 'null'], format: date }
+        parameters: { type: object, additionalProperties: true }
+        version: { type: integer, minimum: 1 }
+    VersionedActionRequest:
+      type: object
+      required: [version]
+      properties:
+        version: { type: integer, minimum: 1 }
+        reason: { type: string, maxLength: 500 }

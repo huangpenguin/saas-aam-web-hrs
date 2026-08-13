@@ -6,33 +6,37 @@ import zhColumns from '@/locales/zh-CN/columns.json'
 import jaCommon from '@/locales/ja-JP/common.json'
 import jaPayroll from '@/locales/ja-JP/payroll.json'
 import jaColumns from '@/locales/ja-JP/columns.json'
+import zhHrs from '@/locales/zh-CN/hrs.json'
+import jaHrs from '@/locales/ja-JP/hrs.json'
 
 const LOCALE_STORAGE_KEY = 'locale'
 
 function readSavedLocale(): string {
   if (typeof window === 'undefined') {
-    return 'zh-CN'
+    return 'ja-JP'
   }
 
-  return localStorage.getItem(LOCALE_STORAGE_KEY) ?? 'zh-CN'
+  return localStorage.getItem(LOCALE_STORAGE_KEY) ?? 'ja-JP'
 }
 
 i18next.init({
   lng: readSavedLocale(),
-  fallbackLng: 'zh-CN',
+  fallbackLng: 'ja-JP',
   debug: false,
-  ns: ['common', 'payroll', 'columns'],
+  ns: ['common', 'payroll', 'columns', 'hrs'],
   defaultNS: 'common',
   resources: {
     'zh-CN': {
       common: zhCommon,
       payroll: zhPayroll,
       columns: zhColumns,
+      hrs: zhHrs,
     },
     'ja-JP': {
       common: jaCommon,
       payroll: jaPayroll,
       columns: jaColumns,
+      hrs: jaHrs,
     },
   },
 })

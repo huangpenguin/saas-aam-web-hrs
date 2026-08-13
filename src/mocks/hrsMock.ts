@@ -1,0 +1,73 @@
+import type { HrsEmployee, SalarySummary } from '@/types/hrs'
+
+export const hrsEmployees: HrsEmployee[] = [
+  {
+    id: 'emp-001',
+    employeeNo: 'A00001',
+    name: '山田 太郎',
+    nameKana: 'ヤマダ タロウ',
+    department: '教務部',
+    position: '専任講師',
+    employmentType: '正社員',
+    status: 'ACTIVE',
+    maskedBankAccountNumber: '****1204',
+    updatedAt: '2026-08-12T16:20:00+09:00',
+    version: 3,
+  },
+  {
+    id: 'emp-002',
+    employeeNo: 'A00017',
+    name: '佐藤 花子',
+    nameKana: 'サトウ ハナコ',
+    department: '総務部',
+    position: '主任',
+    employmentType: '正社員',
+    status: 'ACTIVE',
+    maskedBankAccountNumber: '****8821',
+    updatedAt: '2026-08-11T10:05:00+09:00',
+    version: 2,
+  },
+  {
+    id: 'emp-003',
+    employeeNo: 'P00008',
+    name: '鈴木 一郎',
+    nameKana: 'スズキ イチロウ',
+    department: '日本語学科',
+    position: '非常勤講師',
+    employmentType: 'パート',
+    status: 'SUSPENDED',
+    maskedBankAccountNumber: '****4910',
+    updatedAt: '2026-08-09T09:30:00+09:00',
+    version: 5,
+  },
+]
+
+export const salarySummaries: SalarySummary[] = [
+  {
+    employeeId: 'emp-001',
+    employeeName: '山田 太郎',
+    department: '教務部',
+    salaryType: '固定給',
+    confirmationStatus: 'CONFIRMED_BY_EMPLOYEE',
+    status: 'CALCULATED',
+    netPay: '286420.00',
+  },
+  {
+    employeeId: 'emp-002',
+    employeeName: '佐藤 花子',
+    department: '総務部',
+    salaryType: '固定給',
+    confirmationStatus: 'UNCONFIRMED',
+    status: 'CALCULATED',
+    netPay: '251780.00',
+  },
+  {
+    employeeId: 'emp-003',
+    employeeName: '鈴木 一郎',
+    department: '日本語学科',
+    salaryType: '時給',
+    confirmationStatus: 'AUTO_CONFIRMED',
+    status: 'CALCULATED',
+    netPay: '168300.00',
+  },
+]
