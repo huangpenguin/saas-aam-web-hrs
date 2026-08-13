@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import type { PermissionKey } from '@/types/auth'
 
@@ -10,7 +10,10 @@ declare module 'vue-router' {
 }
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history:
+    import.meta.env.VITE_ROUTER_MODE === 'hash'
+      ? createWebHashHistory(import.meta.env.BASE_URL)
+      : createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: '/', name: 'home', component: () => import('@/views/HrsDashboard.vue'), meta: { titleKey: 'hrs:navigation.home' } },
     { path: '/personnel', name: 'personnel', component: () => import('@/views/personnel/PersonnelList.vue'), meta: { titleKey: 'hrs:navigation.personnel', permission: 'HRS:PERSONNEL:DATA' } },
